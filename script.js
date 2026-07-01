@@ -249,6 +249,17 @@ async function resolveMediaSource(){
 }
 const mediaReady = resolveMediaSource();
 
+// failsafe loop — some mp4s don't loop clean natively if the moov atom
+// is jacked up, so force it manually as a backup to the `loop` attribute
+bgVideo.addEventListener("ended", () => {
+  bgVideo.currentTime = 0;
+  bgVideo.play().catch(() => {});
+});
+
+// stutter mitigation — don't let it sit there half-buffered,
+// force it to reload once we know it's the active source
+bgVideo.addEventListener("stalled", () => bgVideo.load());
+
 function setupAudioGraph(){
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   sourceNode = audioCtx.createMediaElementSource(mediaEl);
