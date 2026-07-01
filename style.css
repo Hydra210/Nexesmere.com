@@ -1,0 +1,203 @@
+:root{
+  --bg:#040404;
+  --fg:#f2f2ed;
+  --mid:#7a7a76;
+  --line:#232320;
+  --glow: rgba(242,242,237,.45);
+  --danger:#f2f2ed; /* status colors kept monochrome on purpose */
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+html,body{
+  height:100%;
+  background:var(--bg);
+  color:var(--fg);
+  overflow:hidden;
+  font-family:'JetBrains Mono',monospace;
+}
+
+#viz{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:0;
+  display:block;
+}
+
+.grain{
+  position:fixed;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode:overlay;
+}
+
+/* ---------- audio gate ---------- */
+.audio-gate{
+  position:fixed;
+  top:20px;
+  right:20px;
+  z-index:20;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background:transparent;
+  border:1px solid var(--line);
+  color:var(--fg);
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  letter-spacing:.12em;
+  padding:9px 14px;
+  cursor:pointer;
+  transition:background .15s ease, color .15s ease;
+}
+.audio-gate:hover{ background:var(--fg); color:var(--bg); }
+.audio-gate.hidden{ display:none; }
+.gate-line{ font-size:9px; }
+
+/* ---------- card ---------- */
+.card{
+  position:relative;
+  z-index:2;
+  width:min(420px, 90vw);
+  margin:0 auto;
+  top:50%;
+  transform:translateY(-50%);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  padding:32px 28px;
+  background:rgba(4,4,4,.55);
+  border:1px solid var(--line);
+  backdrop-filter:blur(6px);
+}
+
+.avatar-wrap{
+  position:relative;
+  width:104px;
+  height:104px;
+  margin-bottom:18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.avatar{
+  width:88px;
+  height:88px;
+  border-radius:50%;
+  object-fit:cover;
+  border:1px solid var(--line);
+  filter:grayscale(1) contrast(1.15);
+  box-shadow:0 0 0 0 var(--glow);
+  animation:pulseRing 2.6s ease-in-out infinite;
+}
+
+.deco-ring{
+  position:absolute;
+  inset:-8px;
+  width:120px;
+  height:120px;
+  pointer-events:none;
+}
+
+@keyframes pulseRing{
+  0%,100%{ box-shadow:0 0 0 0 rgba(242,242,237,0); }
+  50%{ box-shadow:0 0 0 6px rgba(242,242,237,.06); }
+}
+
+.status-dot{
+  position:absolute;
+  bottom:2px;
+  right:2px;
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  border:2px solid var(--bg);
+  background:var(--mid);
+}
+.status-dot[data-status="online"]{ background:#f2f2ed; }
+.status-dot[data-status="idle"]{ background:#a8a8a2; }
+.status-dot[data-status="dnd"]{ background:#5c5c58; }
+.status-dot[data-status="offline"]{ background:#333331; }
+
+.username{
+  font-family:'Anton',sans-serif;
+  font-size:34px;
+  letter-spacing:.03em;
+  text-transform:uppercase;
+  line-height:1;
+}
+
+.status-text{
+  margin-top:8px;
+  font-size:11px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--mid);
+}
+
+.divider{
+  width:100%;
+  height:1px;
+  background:var(--line);
+  margin:22px 0 18px;
+}
+
+.activity-feed{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.activity-row{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  text-align:left;
+  gap:2px;
+  border-left:2px solid var(--line);
+  padding-left:10px;
+}
+
+.activity-eyebrow{
+  font-size:9px;
+  letter-spacing:.18em;
+  color:var(--mid);
+  text-transform:uppercase;
+}
+
+.activity-detail{
+  font-size:12.5px;
+  letter-spacing:.01em;
+  color:var(--fg);
+}
+
+.credit{
+  position:fixed;
+  bottom:16px;
+  left:20px;
+  z-index:2;
+  display:flex;
+  gap:8px;
+  font-size:10px;
+  letter-spacing:.1em;
+  color:var(--mid);
+  text-transform:uppercase;
+}
+.dot-sep{ opacity:.4; }
+
+@media (max-width:480px){
+  .username{ font-size:26px; }
+  .card{ padding:26px 20px; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .avatar{ animation:none; }
+}

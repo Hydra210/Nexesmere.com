@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>@nexesmere</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <canvas id="viz"></canvas>
+  <div class="grain"></div>
+
+  <button id="enableAudio" class="audio-gate">
+    <span class="gate-line">▶</span>
+    <span class="gate-text">TAP FOR SOUND</span>
+  </button>
+
+  <main class="card">
+
+    <div class="avatar-wrap">
+      <img id="decoRing" class="deco-ring" src="" alt="" hidden>
+      <img id="avatar" class="avatar" src="" alt="avatar">
+      <span id="statusDot" class="status-dot" data-status="offline"></span>
+    </div>
+
+    <h1 id="username" class="username">LOADING</h1>
+    <p id="statusText" class="status-text">— — —</p>
+
+    <div class="divider"></div>
+
+    <div id="activityFeed" class="activity-feed">
+      <div class="activity-row">
+        <span class="activity-eyebrow">CONNECTING</span>
+        <span class="activity-detail">pulling discord data...</span>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="credit">
+    <span id="clock">00:00:00</span>
+    <span class="dot-sep">/</span>
+    <span>NEXESMERE.SYS</span>
+  </footer>
+
+  <audio id="bgAudio" src="music/track.mp3" loop preload="auto"></audio>
+
+  <script src="script.js"></script>
+</body>
+</html>
