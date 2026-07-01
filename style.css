@@ -201,18 +201,26 @@ html,body{
   text-transform:uppercase;
   line-height:1;
   position:relative;
-  background:linear-gradient(110deg, var(--fg) 35%, #ffffff 50%, var(--fg) 65%);
-  background-size:250% 100%;
+  background:linear-gradient(100deg,
+    #000000 0%,
+    #3a3a38 15%,
+    #000000 30%,
+    #f2f2ed 45%,
+    #6e6e6a 60%,
+    #000000 75%,
+    #f2f2ed 90%,
+    #000000 100%);
+  background-size:400% 100%;
   -webkit-background-clip:text;
   background-clip:text;
   color:transparent;
-  animation:nameShine 5s ease-in-out infinite, nameGlitch 6.5s linear infinite;
+  -webkit-text-stroke:.5px rgba(242,242,237,.25);
+  animation:nameGradientFlow 7s linear infinite, nameGlitch 6.5s linear infinite;
 }
 
-@keyframes nameShine{
-  0%{ background-position:200% 0; }
-  55%{ background-position:-120% 0; }
-  100%{ background-position:-120% 0; }
+@keyframes nameGradientFlow{
+  0%{ background-position:0% 0; }
+  100%{ background-position:400% 0; }
 }
 
 @keyframes nameGlitch{
