@@ -39,7 +39,7 @@ after that the visualizer switches from its idle sine wave to reacting off real 
 ## background details
 - **stars** — a full starfield behind everything, twinkling on independent sine cycles, slow ambient drift, mostly white with a scattering tinted blue and a few warm/amber ones for realism
 - **name particles** — glowing dots (white/blue/gold) continuously drift up around your display name, sized and spaced to actually read at a glance rather than just a subtle dusting
-- **display name animation** — a light shine sweeps across the text every few seconds, plus a quick glitch tick every ~6.5s (brief offset + soft color-split, still monochrome/blue to match the theme)
+- **display name animation** — a continuously flowing gradient runs through the text (black → gray → white → black, looping), with a thin light stroke around the letters so they stay readable even when the fill passes through black against the black background. plus a quick glitch tick every ~6.5s (brief offset + soft color-split)
 - all of the above respect `prefers-reduced-motion` — particles stop spawning, the shine/glitch turns off (name goes solid), and the pfp pulse turns off if that's set on the visitor's system
 
 ## music

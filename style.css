@@ -22,17 +22,19 @@ html,body{
   inset:0;
   width:100%;
   height:100%;
-  z-index:0;
+  z-index:1;
   display:block;
 }
 
 #viz{
   position:fixed;
-  inset:0;
-  width:100%;
-  height:100%;
+  inset:-4%;
+  width:108%;
+  height:108%;
   z-index:0;
   display:block;
+  filter:blur(9px) brightness(1.15);
+  opacity:.8;
 }
 
 .grain{
@@ -142,10 +144,10 @@ html,body{
   border:2px solid var(--bg);
   background:var(--mid);
 }
-.status-dot[data-status="online"]{ background:#f2f2ed; }
-.status-dot[data-status="idle"]{ background:#a8a8a2; }
-.status-dot[data-status="dnd"]{ background:#5c5c58; }
-.status-dot[data-status="offline"]{ background:#333331; }
+.status-dot[data-status="online"]{ background:#3ba55d; }
+.status-dot[data-status="idle"]{ background:#e0a63e; }
+.status-dot[data-status="dnd"]{ background:#c0392b; }
+.status-dot[data-status="offline"]{ background:#7a7a76; }
 
 .name-wrap{
   position:relative;
