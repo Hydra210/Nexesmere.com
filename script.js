@@ -59,6 +59,7 @@ function connectLanyard(){
 
 function renderPresence(data){
   const user = data.discord_user;
+  const displayNameEl = document.getElementById("displayName");
   const usernameEl = document.getElementById("username");
   const avatarEl = document.getElementById("avatar");
   const decoEl = document.getElementById("decoRing");
@@ -66,7 +67,8 @@ function renderPresence(data){
   const statusText = document.getElementById("statusText");
   const feed = document.getElementById("activityFeed");
 
-  // identity
+  // identity — global_name is the "display name", username is the handle
+  displayNameEl.textContent = user.global_name || user.username || "unknown";
   usernameEl.textContent = "@" + (user.username || "unknown");
 
   const ext = user.avatar && user.avatar.startsWith("a_") ? "gif" : "png";
@@ -133,7 +135,8 @@ connectLanyard();
 const canvas = document.getElementById("viz");
 const ctx = canvas.getContext("2d");
 const audioEl = document.getElementById("bgAudio");
-const gateBtn = document.getElementById("enableAudio");
+const entryGate = document.getElementById("entryGate");
+const mainCard = document.getElementById("mainCard");
 
 let audioCtx, analyser, dataArray, sourceNode;
 let audioReady = false;
@@ -155,7 +158,7 @@ function setupAudioGraph(){
   dataArray = new Uint8Array(analyser.frequencyBinCount);
 }
 
-gateBtn.addEventListener("click", async () => {
+entryGate.addEventListener("click", async () => {
   if (!audioReady) {
     setupAudioGraph();
     audioReady = true;
@@ -163,8 +166,10 @@ gateBtn.addEventListener("click", async () => {
   await audioCtx.resume();
   audioEl.volume = 0.5;
   audioEl.play().catch(() => {});
-  gateBtn.classList.add("hidden");
-});
+
+  entryGate.classList.add("hidden");
+  mainCard.classList.remove("blurred");
+}, { once: true });
 
 function drawIdle(t){
   // ambient idle motion before audio is enabled — sparse flat baseline

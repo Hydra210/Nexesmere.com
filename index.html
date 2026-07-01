@@ -14,12 +14,11 @@
   <canvas id="viz"></canvas>
   <div class="grain"></div>
 
-  <button id="enableAudio" class="audio-gate">
-    <span class="gate-line">▶</span>
-    <span class="gate-text">TAP FOR SOUND</span>
-  </button>
+  <div id="entryGate" class="entry-gate">
+    <span class="entry-text">CLICK TO ENTER</span>
+  </div>
 
-  <main class="card">
+  <main id="mainCard" class="card blurred">
 
     <div class="avatar-wrap">
       <img id="decoRing" class="deco-ring" src="" alt="" hidden>
@@ -27,7 +26,8 @@
       <span id="statusDot" class="status-dot" data-status="offline"></span>
     </div>
 
-    <h1 id="username" class="username">LOADING</h1>
+    <h1 id="displayName" class="display-name">LOADING</h1>
+    <p id="username" class="username">@loading</p>
     <p id="statusText" class="status-text">— — —</p>
 
     <div class="divider"></div>

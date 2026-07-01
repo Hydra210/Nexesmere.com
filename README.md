@@ -19,18 +19,24 @@ const DISCORD_ID = "728856632288608336";
 lanyard needs you to be in their discord server for presence to work: https://discord.gg/lanyard — join it once and your presence will start showing up on any site using the api, no bot install needed.
 
 pulled automatically:
-- pfp (animated if you have a gif avatar)
-- username
+- pfp (animated if you have a gif avatar), shown in full color
+- display name (big) + @username (small underneath)
 - status dot (online/idle/dnd/offline)
 - custom status text
 - avatar decoration, if your account has one equipped
 - current activity (game/app), spotify now playing
 
-**not pulled:** discord "profile effects" (the animated backgrounds behind your profile in the discord client). discord doesn't expose those through lanyard or any public api right now, so there's no honest way to pull them live. if you want that look, easiest move is faking it with a css animation behind the avatar instead of trying to mirror the real one.
+**not pulled: discord "profile effects."** those are the animated backgrounds behind your pfp inside the discord client itself. as of now discord doesn't expose them through lanyard or any public api, so there's no legitimate way to pull them live — anything claiming to do that is either scraping in a way that'll break constantly or straight up faking it. if you want that vibe here, the honest move is a css animation behind the avatar built to look similar, not a real mirror of it.
+
+## click to enter
+the whole page loads blurred behind a "CLICK TO ENTER" gate. clicking it does three things at once, in the same user gesture (required for browsers to allow audio):
+1. unblurs the card
+2. starts the audio context
+3. plays `music/track.mp3` immediately at 50% volume
+
+after that the visualizer switches from its idle sine wave to reacting off real frequency data from the track.
 
 ## music
-autoplay-with-sound is blocked by browsers until the user interacts with the page, so there's a "TAP FOR SOUND" button top right. once clicked it unmutes and kicks off the visualizer reacting to the actual frequency data instead of the idle sine wave.
-
 swap `music/track.mp3` for whatever you want. mp3/ogg/wav all work, just update the `src` on the `<audio>` tag in `index.html` if you rename it.
 
 ## deploy on render
