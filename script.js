@@ -142,12 +142,14 @@ const ctx = canvas.getContext("2d");
 const starsCanvas = document.getElementById("stars");
 const starsCtx = starsCanvas.getContext("2d");
 const audioEl = document.getElementById("bgAudio");
+const bgVideo = document.getElementById("bgVideo");
 const entryGate = document.getElementById("entryGate");
 const mainCard = document.getElementById("mainCard");
 const nameParticles = document.getElementById("nameParticles");
 
 let audioCtx, analyser, dataArray, sourceNode;
 let audioReady = false;
+let mediaEl = audioEl; // whichever element ends up playing — video or audio
 
 // starfield state
 let stars = [];
@@ -217,9 +219,39 @@ function drawStars(t){
 
 resizeCanvas();
 
+// ===================================================================
+// MEDIA SOURCE — mp4 (video, becomes the blurred background) takes
+// priority over mp3 (audio-only, plain black background)
+// ===================================================================
+async function fileExists(url){
+  try {
+    const res = await fetch(url, { method: "HEAD" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveMediaSource(){
+  if (await fileExists("music/track.mp4")) {
+    bgVideo.src = "music/track.mp4";
+    bgVideo.hidden = false;
+    mediaEl = bgVideo;
+    return;
+  }
+  if (await fileExists("music/track.mp3")) {
+    audioEl.src = "music/track.mp3";
+    mediaEl = audioEl;
+    return;
+  }
+  console.warn("no music/track.mp4 or music/track.mp3 found — entry gate will still work, just silently.");
+  mediaEl = audioEl;
+}
+const mediaReady = resolveMediaSource();
+
 function setupAudioGraph(){
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  sourceNode = audioCtx.createMediaElementSource(audioEl);
+  sourceNode = audioCtx.createMediaElementSource(mediaEl);
   analyser = audioCtx.createAnalyser();
   analyser.fftSize = 256;
   sourceNode.connect(analyser);
@@ -228,13 +260,16 @@ function setupAudioGraph(){
 }
 
 entryGate.addEventListener("click", async () => {
+  await mediaReady; // make sure we know which file we're playing before wiring the graph
+
   if (!audioReady) {
     setupAudioGraph();
     audioReady = true;
   }
   await audioCtx.resume();
-  audioEl.volume = 0.5;
-  audioEl.play().catch(() => {});
+  mediaEl.muted = false;
+  mediaEl.volume = 0.5;
+  mediaEl.play().catch(() => {});
 
   entryGate.classList.add("hidden");
   mainCard.classList.remove("blurred");
@@ -294,7 +329,7 @@ function drawReactive(){
 
 function loop(t){
   drawStars(t);
-  if (audioReady && !audioEl.paused) {
+  if (audioReady && !mediaEl.paused) {
     drawReactive();
   } else {
     drawIdle(t);

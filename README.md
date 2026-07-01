@@ -54,7 +54,13 @@ that's it, `index.html` already points at those paths. if your images have visib
 - all of the above respect `prefers-reduced-motion` — particles stop spawning, the shine/glitch turns off (name goes solid), and the pfp pulse turns off if that's set on the visitor's system
 
 ## music
-swap `music/track.mp3` for whatever you want. mp3/ogg/wav all work, just update the `src` on the `<audio>` tag in `index.html` if you rename it.
+you can use either:
+- `music/track.mp3` — audio only, plain black background like before
+- `music/track.mp4` — video + audio. the video becomes the background, heavily blurred and dimmed so it doesn't fight with the text/stars on top, and its audio track drives the visualizer instead of a separate mp3
+
+**mp4 takes priority.** the page checks for `music/track.mp4` first on load; if it's not there, it falls back to `music/track.mp3`. you only need one of the two, not both — no need to remove the other file if you switch, it just won't be used.
+
+either way, playback (and unmuting, for video) only starts once you click "click to enter," same as before — browsers require a click before audio/video can play with sound.
 
 ## deploy on render
 1. push this repo to github
