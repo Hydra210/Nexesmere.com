@@ -160,6 +160,16 @@ html,body{
 }
 .status-dot[data-status="offline"]{ background:#7a7a76; }
 
+.dnd-icon{
+  position:absolute;
+  bottom:2px;
+  right:2px;
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
 .name-wrap{
   position:relative;
   display:inline-block;

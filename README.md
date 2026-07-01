@@ -43,6 +43,7 @@ drop your images in as:
 - `icons/discord.png`
 - `icons/instagram.png`
 - `icons/roblox.png`
+- `icons/dnd.png` — shown over the status dot specifically when your discord status is "do not disturb." if this file's missing, it falls back to the plain css dnd dot (red circle, white bar) automatically instead of breaking.
 
 that's it, `index.html` already points at those paths. if your images have visible padding/whitespace baked in they'll look off-center in the 40x40 box — trim tight to the icon shape for the cleanest look.
 

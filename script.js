@@ -64,6 +64,7 @@ function renderPresence(data){
   const avatarEl = document.getElementById("avatar");
   const decoEl = document.getElementById("decoRing");
   const statusDot = document.getElementById("statusDot");
+  const dndIcon = document.getElementById("dndIcon");
   const statusText = document.getElementById("statusText");
   const feed = document.getElementById("activityFeed");
 
@@ -86,6 +87,7 @@ function renderPresence(data){
 
   // status dot
   statusDot.dataset.status = data.discord_status || "offline";
+  dndIcon.hidden = data.discord_status !== "dnd" || dndIcon.dataset.broken === "1";
 
   // custom status text (activity type 4)
   const customStatus = (data.activities || []).find(a => a.type === 4);
