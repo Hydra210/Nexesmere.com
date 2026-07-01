@@ -37,7 +37,14 @@ the whole page loads blurred behind a "CLICK TO ENTER" gate. clicking it does th
 after that the visualizer switches from its idle sine wave to reacting off real frequency data from the track.
 
 ## socials
-three white circular buttons (discord, instagram, roblox) linking to your profiles, icons are original simplified glyphs (not the literal trademarked logos) since those are protected marks — these read clearly as each platform without copying the official artwork. easy to swap for the real brand SVGs yourself later if you grab a set from somewhere licensed for that (e.g. Simple Icons, CC0).
+three icon buttons (discord, instagram, roblox) linking to your profiles — no background, just your own PNGs floating with a lift-and-glow on hover.
+
+drop your images in as:
+- `icons/discord.png`
+- `icons/instagram.png`
+- `icons/roblox.png`
+
+that's it, `index.html` already points at those paths. if your images have visible padding/whitespace baked in they'll look off-center in the 40x40 box — trim tight to the icon shape for the cleanest look.
 
 ## background details
 - **stars** — a full starfield behind everything, twinkling on independent sine cycles, slow ambient drift, mostly white with a scattering tinted blue and a few warm/amber ones for realism
