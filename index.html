@@ -11,6 +11,7 @@
 </head>
 <body>
 
+  <canvas id="stars"></canvas>
   <canvas id="viz"></canvas>
   <div id="beatFlash" class="beat-flash"></div>
   <div class="grain"></div>
@@ -27,7 +28,10 @@
       <span id="statusDot" class="status-dot" data-status="offline"></span>
     </div>
 
-    <h1 id="displayName" class="display-name">LOADING</h1>
+    <div class="name-wrap">
+      <h1 id="displayName" class="display-name">LOADING</h1>
+      <div id="nameParticles" class="name-particles"></div>
+    </div>
     <p id="username" class="username">@loading</p>
     <p id="statusText" class="status-text">— — —</p>
 

@@ -134,24 +134,88 @@ connectLanyard();
 // ===================================================================
 const canvas = document.getElementById("viz");
 const ctx = canvas.getContext("2d");
+const starsCanvas = document.getElementById("stars");
+const starsCtx = starsCanvas.getContext("2d");
 const audioEl = document.getElementById("bgAudio");
 const entryGate = document.getElementById("entryGate");
 const mainCard = document.getElementById("mainCard");
 const beatFlash = document.getElementById("beatFlash");
+const nameParticles = document.getElementById("nameParticles");
 
 let audioCtx, analyser, dataArray, sourceNode;
 let audioReady = false;
 
 // beat detection state
 let bassHistory = [];
-let flashOpacity = 0;
+let flashFadeTimer = null;
 let lastBeatAt = 0;
+
+// starfield state
+let stars = [];
 
 function resizeCanvas(){
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+  starsCanvas.width = window.innerWidth;
+  starsCanvas.height = window.innerHeight;
+  initStars();
 }
 window.addEventListener("resize", resizeCanvas);
+
+function initStars(){
+  const w = starsCanvas.width, h = starsCanvas.height;
+  const count = Math.round((w * h) / 9000); // scales with screen size
+  stars = [];
+  for (let i = 0; i < count; i++){
+    const roll = Math.random();
+    let hue = "white";
+    if (roll < 0.16) hue = "blue";
+    else if (roll < 0.22) hue = "warm";
+
+    stars.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      r: Math.random() * 1.3 + 0.4,
+      baseAlpha: Math.random() * 0.5 + 0.35,
+      phase: Math.random() * Math.PI * 2,
+      speed: Math.random() * 0.8 + 0.3,
+      driftX: (Math.random() - 0.5) * 0.04,
+      driftY: (Math.random() - 0.5) * 0.04,
+      hue
+    });
+  }
+}
+
+function drawStars(t){
+  const w = starsCanvas.width, h = starsCanvas.height;
+  starsCtx.clearRect(0, 0, w, h);
+
+  for (const s of stars){
+    const twinkle = Math.sin(t * 0.001 * s.speed + s.phase);
+    const alpha = Math.max(0, Math.min(1, s.baseAlpha + twinkle * 0.3));
+
+    let color;
+    if (s.hue === "blue") color = `rgba(150,190,255,${alpha})`;
+    else if (s.hue === "warm") color = `rgba(255,225,195,${alpha})`;
+    else color = `rgba(242,242,237,${alpha})`;
+
+    starsCtx.beginPath();
+    starsCtx.fillStyle = color;
+    starsCtx.shadowColor = color;
+    starsCtx.shadowBlur = s.r * 4;
+    starsCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    starsCtx.fill();
+
+    // slow ambient drift, wraps around edges
+    s.x += s.driftX;
+    s.y += s.driftY;
+    if (s.x < 0) s.x = w;
+    if (s.x > w) s.x = 0;
+    if (s.y < 0) s.y = h;
+    if (s.y > h) s.y = 0;
+  }
+}
+
 resizeCanvas();
 
 function setupAudioGraph(){
@@ -187,16 +251,32 @@ function detectBeatAndFlash(){
   const avg = bassHistory.reduce((a, b) => a + b, 0) / bassHistory.length;
 
   const now = performance.now();
-  const isKick = bassEnergy > avg * 1.35 && bassEnergy > 90 && (now - lastBeatAt) > 180;
+  const isKick = bassEnergy > avg * 1.25 && bassEnergy > 75 && (now - lastBeatAt) > 180;
 
   if (isKick) {
     lastBeatAt = now;
-    flashOpacity = Math.min(1, bassEnergy / 255 * 1.1);
-  } else {
-    flashOpacity *= 0.85; // decay
+    triggerFlash(Math.min(1, bassEnergy / 255 * 1.15));
   }
+}
 
-  beatFlash.style.opacity = flashOpacity.toFixed(3);
+function triggerFlash(intensity){
+  // random spot each hit, biased away from the very edges
+  const x = 15 + Math.random() * 70; // 15%–85%
+  const y = 15 + Math.random() * 70;
+  beatFlash.style.setProperty("--x", `${x}%`);
+  beatFlash.style.setProperty("--y", `${y}%`);
+
+  clearTimeout(flashFadeTimer);
+
+  // quick attack
+  beatFlash.style.transition = "opacity 90ms ease-out";
+  beatFlash.style.opacity = intensity.toFixed(3);
+
+  // then a slower, smooth release
+  flashFadeTimer = setTimeout(() => {
+    beatFlash.style.transition = "opacity 850ms ease-in";
+    beatFlash.style.opacity = "0";
+  }, 90);
 }
 
 function drawIdle(t){
@@ -253,6 +333,7 @@ function drawReactive(){
 }
 
 function loop(t){
+  drawStars(t);
   if (audioReady && !audioEl.paused) {
     drawReactive();
   } else {
@@ -261,3 +342,28 @@ function loop(t){
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+// ===================================================================
+// NAME PARTICLES — small glowing dots drifting up around the display name
+// ===================================================================
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function spawnNameParticle(){
+  if (reducedMotion) return;
+
+  const width = nameParticles.clientWidth || 200;
+  const p = document.createElement("span");
+  p.className = "particle" + (Math.random() < 0.3 ? " blue" : "");
+
+  const startX = Math.random() * width;
+  const drift = (Math.random() - 0.5) * 30; // px horizontal wander while floating up
+
+  p.style.left = `${startX}px`;
+  p.style.setProperty("--dx", `${drift}px`);
+
+  nameParticles.appendChild(p);
+  p.addEventListener("animationend", () => p.remove());
+}
+
+setInterval(spawnNameParticle, 260);
+
