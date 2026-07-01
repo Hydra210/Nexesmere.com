@@ -45,22 +45,6 @@ html,body{
   mix-blend-mode:overlay;
 }
 
-.beat-flash{
-  position:fixed;
-  top:var(--y, 50%);
-  left:var(--x, 50%);
-  width:55vmax;
-  height:55vmax;
-  transform:translate(-50%, -50%);
-  z-index:1;
-  pointer-events:none;
-  border-radius:50%;
-  background:radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.4) 40%, rgba(255,255,255,0) 72%);
-  filter:blur(55px);
-  opacity:0;
-  will-change:opacity;
-}
-
 /* ---------- entry gate ---------- */
 .entry-gate{
   position:fixed;
@@ -170,7 +154,7 @@ html,body{
 
 .name-particles{
   position:absolute;
-  inset:-16px -24px;
+  inset:-24px -36px;
   pointer-events:none;
   overflow:visible;
 }
@@ -178,24 +162,36 @@ html,body{
 .particle{
   position:absolute;
   bottom:6px;
-  width:3px;
-  height:3px;
+  width:5px;
+  height:5px;
   border-radius:50%;
   background:var(--fg);
-  box-shadow:0 0 4px rgba(242,242,237,.8);
+  box-shadow:
+    0 0 6px rgba(242,242,237,.9),
+    0 0 14px rgba(242,242,237,.4);
   opacity:0;
-  animation:particleFloat 2.4s ease-out forwards;
+  animation:particleFloat 2.6s cubic-bezier(.15,.6,.35,1) forwards;
 }
 
 .particle.blue{
   background:#9ec8ff;
-  box-shadow:0 0 6px rgba(158,200,255,.9);
+  box-shadow:
+    0 0 8px rgba(158,200,255,1),
+    0 0 18px rgba(158,200,255,.5);
+}
+
+.particle.gold{
+  background:#ffdf9e;
+  box-shadow:
+    0 0 8px rgba(255,223,158,1),
+    0 0 18px rgba(255,223,158,.5);
 }
 
 @keyframes particleFloat{
-  0%{ transform:translate(0,0) scale(.5); opacity:0; }
-  12%{ opacity:1; }
-  100%{ transform:translate(var(--dx,0px), -46px) scale(1); opacity:0; }
+  0%{ transform:translate(0,0) scale(.3) rotate(0deg); opacity:0; }
+  10%{ opacity:1; transform:translate(0,-4px) scale(1.1) rotate(20deg); }
+  30%{ transform:translate(calc(var(--dx,0px) * .3), -18px) scale(1) rotate(60deg); opacity:1; }
+  100%{ transform:translate(var(--dx,0px), -64px) scale(.4) rotate(160deg); opacity:0; }
 }
 
 .display-name{
@@ -204,6 +200,27 @@ html,body{
   letter-spacing:.03em;
   text-transform:uppercase;
   line-height:1;
+  position:relative;
+  background:linear-gradient(110deg, var(--fg) 35%, #ffffff 50%, var(--fg) 65%);
+  background-size:250% 100%;
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  animation:nameShine 5s ease-in-out infinite, nameGlitch 6.5s linear infinite;
+}
+
+@keyframes nameShine{
+  0%{ background-position:200% 0; }
+  55%{ background-position:-120% 0; }
+  100%{ background-position:-120% 0; }
+}
+
+@keyframes nameGlitch{
+  0%, 96%, 100%{ transform:translate(0,0); filter:none; }
+  96.5%{ transform:translate(-2px,1px); filter:drop-shadow(2px 0 rgba(158,200,255,.7)) drop-shadow(-2px 0 rgba(255,255,255,.5)); }
+  97%{ transform:translate(2px,-1px); filter:drop-shadow(-2px 0 rgba(158,200,255,.7)) drop-shadow(2px 0 rgba(255,255,255,.5)); }
+  97.5%{ transform:translate(-1px,0); filter:drop-shadow(1px 0 rgba(158,200,255,.5)); }
+  98%{ transform:translate(0,0); filter:none; }
 }
 
 .username{
@@ -283,4 +300,11 @@ html,body{
 @media (prefers-reduced-motion: reduce){
   .avatar{ animation:none; }
   .particle{ display:none; }
+  .display-name{
+    animation:none;
+    background:none;
+    -webkit-background-clip:initial;
+    background-clip:initial;
+    color:var(--fg);
+  }
 }

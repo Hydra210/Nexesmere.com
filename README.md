@@ -38,15 +38,9 @@ after that the visualizer switches from its idle sine wave to reacting off real 
 
 ## background details
 - **stars** — a full starfield behind everything, twinkling on independent sine cycles, slow ambient drift, mostly white with a scattering tinted blue and a few warm/amber ones for realism
-- **name particles** — tiny glowing dots continuously drift up around your display name, mostly white with an occasional blue one
-- both respect `prefers-reduced-motion` — particles stop spawning and the pfp pulse turns off if that's set on the visitor's system
-
-## beat flash
-a blurred white glow pops in at a random spot on screen every time it detects a kick/bass hit, then fades out smoothly. it's driven off the real low-frequency data from `music/track.mp3` — if you don't hear/see anything, first check there's an actual audio file at that path (not just the placeholder), it's a real 404 otherwise and there's no data to react to.
-
-if it's not triggering enough (or too much) on your track, tune these two numbers in `script.js` inside `detectBeatAndFlash()`:
-- `avg * 1.25` — how far above the rolling average a hit needs to spike (raise for fewer/bigger flashes)
-- `bassEnergy > 75` — minimum floor so quiet passages don't trigger it
+- **name particles** — glowing dots (white/blue/gold) continuously drift up around your display name, sized and spaced to actually read at a glance rather than just a subtle dusting
+- **display name animation** — a light shine sweeps across the text every few seconds, plus a quick glitch tick every ~6.5s (brief offset + soft color-split, still monochrome/blue to match the theme)
+- all of the above respect `prefers-reduced-motion` — particles stop spawning, the shine/glitch turns off (name goes solid), and the pfp pulse turns off if that's set on the visitor's system
 
 ## music
 swap `music/track.mp3` for whatever you want. mp3/ogg/wav all work, just update the `src` on the `<audio>` tag in `index.html` if you rename it.

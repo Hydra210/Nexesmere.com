@@ -139,16 +139,10 @@ const starsCtx = starsCanvas.getContext("2d");
 const audioEl = document.getElementById("bgAudio");
 const entryGate = document.getElementById("entryGate");
 const mainCard = document.getElementById("mainCard");
-const beatFlash = document.getElementById("beatFlash");
 const nameParticles = document.getElementById("nameParticles");
 
 let audioCtx, analyser, dataArray, sourceNode;
 let audioReady = false;
-
-// beat detection state
-let bassHistory = [];
-let flashFadeTimer = null;
-let lastBeatAt = 0;
 
 // starfield state
 let stars = [];
@@ -241,44 +235,6 @@ entryGate.addEventListener("click", async () => {
   mainCard.classList.remove("blurred");
 }, { once: true });
 
-function detectBeatAndFlash(){
-  // low end lives in the first handful of bins at fftSize 256
-  const bassBins = dataArray.slice(0, 6);
-  const bassEnergy = bassBins.reduce((a, b) => a + b, 0) / bassBins.length; // 0-255
-
-  bassHistory.push(bassEnergy);
-  if (bassHistory.length > 30) bassHistory.shift();
-  const avg = bassHistory.reduce((a, b) => a + b, 0) / bassHistory.length;
-
-  const now = performance.now();
-  const isKick = bassEnergy > avg * 1.25 && bassEnergy > 75 && (now - lastBeatAt) > 180;
-
-  if (isKick) {
-    lastBeatAt = now;
-    triggerFlash(Math.min(1, bassEnergy / 255 * 1.15));
-  }
-}
-
-function triggerFlash(intensity){
-  // random spot each hit, biased away from the very edges
-  const x = 15 + Math.random() * 70; // 15%–85%
-  const y = 15 + Math.random() * 70;
-  beatFlash.style.setProperty("--x", `${x}%`);
-  beatFlash.style.setProperty("--y", `${y}%`);
-
-  clearTimeout(flashFadeTimer);
-
-  // quick attack
-  beatFlash.style.transition = "opacity 90ms ease-out";
-  beatFlash.style.opacity = intensity.toFixed(3);
-
-  // then a slower, smooth release
-  flashFadeTimer = setTimeout(() => {
-    beatFlash.style.transition = "opacity 850ms ease-in";
-    beatFlash.style.opacity = "0";
-  }, 90);
-}
-
 function drawIdle(t){
   // ambient idle motion before audio is enabled — sparse flat baseline
   const w = canvas.width, h = canvas.height, mid = h / 2;
@@ -299,7 +255,6 @@ function drawIdle(t){
 
 function drawReactive(){
   analyser.getByteFrequencyData(dataArray);
-  detectBeatAndFlash();
   const w = canvas.width, h = canvas.height, mid = h / 2;
   ctx.clearRect(0, 0, w, h);
 
@@ -353,10 +308,19 @@ function spawnNameParticle(){
 
   const width = nameParticles.clientWidth || 200;
   const p = document.createElement("span");
-  p.className = "particle" + (Math.random() < 0.3 ? " blue" : "");
+
+  const roll = Math.random();
+  let colorClass = "";
+  if (roll < 0.32) colorClass = " blue";
+  else if (roll < 0.42) colorClass = " gold";
+  p.className = "particle" + colorClass;
+
+  const size = 3.5 + Math.random() * 3; // 3.5–6.5px
+  p.style.width = `${size}px`;
+  p.style.height = `${size}px`;
 
   const startX = Math.random() * width;
-  const drift = (Math.random() - 0.5) * 30; // px horizontal wander while floating up
+  const drift = (Math.random() - 0.5) * 46; // px horizontal wander while floating up
 
   p.style.left = `${startX}px`;
   p.style.setProperty("--dx", `${drift}px`);
@@ -365,5 +329,7 @@ function spawnNameParticle(){
   p.addEventListener("animationend", () => p.remove());
 }
 
-setInterval(spawnNameParticle, 260);
+setInterval(spawnNameParticle, 140);
+// occasional double-spawn so it never feels too sparse
+setInterval(() => { if (Math.random() < 0.5) spawnNameParticle(); }, 220);
 
