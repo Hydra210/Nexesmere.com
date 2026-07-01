@@ -36,6 +36,9 @@ the whole page loads blurred behind a "CLICK TO ENTER" gate. clicking it does th
 
 after that the visualizer switches from its idle sine wave to reacting off real frequency data from the track.
 
+## socials
+three white circular buttons (discord, instagram, roblox) linking to your profiles, icons are original simplified glyphs (not the literal trademarked logos) since those are protected marks — these read clearly as each platform without copying the official artwork. easy to swap for the real brand SVGs yourself later if you grab a set from somewhere licensed for that (e.g. Simple Icons, CC0).
+
 ## background details
 - **stars** — a full starfield behind everything, twinkling on independent sine cycles, slow ambient drift, mostly white with a scattering tinted blue and a few warm/amber ones for realism
 - **name particles** — glowing dots (white/blue/gold) continuously drift up around your display name, sized and spaced to actually read at a glance rather than just a subtle dusting
