@@ -87,7 +87,10 @@ function renderPresence(data){
 
   // status dot
   statusDot.dataset.status = data.discord_status || "offline";
-  dndIcon.hidden = data.discord_status !== "dnd" || dndIcon.dataset.broken === "1";
+
+  const showDndIcon = data.discord_status === "dnd" && dndIcon.dataset.broken !== "1";
+  dndIcon.hidden = !showDndIcon;
+  statusDot.style.visibility = showDndIcon ? "hidden" : "visible";
 
   // custom status text (activity type 4)
   const customStatus = (data.activities || []).find(a => a.type === 4);
