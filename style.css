@@ -36,6 +36,17 @@ html,body{
   mix-blend-mode:overlay;
 }
 
+.beat-flash{
+  position:fixed;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  background:radial-gradient(circle at 50% 50%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.2) 45%, rgba(255,255,255,0) 75%);
+  filter:blur(40px);
+  opacity:0;
+  will-change:opacity;
+}
+
 /* ---------- entry gate ---------- */
 .entry-gate{
   position:fixed;
@@ -60,10 +71,6 @@ html,body{
   letter-spacing:.08em;
   color:var(--fg);
   text-transform:uppercase;
-  padding:18px 34px;
-  border:1px solid rgba(242,242,237,.3);
-  border-radius:999px;
-  background:rgba(4,4,4,.3);
   animation:breathe 2.4s ease-in-out infinite;
 }
 @keyframes breathe{

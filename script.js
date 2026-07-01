@@ -137,9 +137,15 @@ const ctx = canvas.getContext("2d");
 const audioEl = document.getElementById("bgAudio");
 const entryGate = document.getElementById("entryGate");
 const mainCard = document.getElementById("mainCard");
+const beatFlash = document.getElementById("beatFlash");
 
 let audioCtx, analyser, dataArray, sourceNode;
 let audioReady = false;
+
+// beat detection state
+let bassHistory = [];
+let flashOpacity = 0;
+let lastBeatAt = 0;
 
 function resizeCanvas(){
   canvas.width = window.innerWidth;
@@ -171,6 +177,28 @@ entryGate.addEventListener("click", async () => {
   mainCard.classList.remove("blurred");
 }, { once: true });
 
+function detectBeatAndFlash(){
+  // low end lives in the first handful of bins at fftSize 256
+  const bassBins = dataArray.slice(0, 6);
+  const bassEnergy = bassBins.reduce((a, b) => a + b, 0) / bassBins.length; // 0-255
+
+  bassHistory.push(bassEnergy);
+  if (bassHistory.length > 30) bassHistory.shift();
+  const avg = bassHistory.reduce((a, b) => a + b, 0) / bassHistory.length;
+
+  const now = performance.now();
+  const isKick = bassEnergy > avg * 1.35 && bassEnergy > 90 && (now - lastBeatAt) > 180;
+
+  if (isKick) {
+    lastBeatAt = now;
+    flashOpacity = Math.min(1, bassEnergy / 255 * 1.1);
+  } else {
+    flashOpacity *= 0.85; // decay
+  }
+
+  beatFlash.style.opacity = flashOpacity.toFixed(3);
+}
+
 function drawIdle(t){
   // ambient idle motion before audio is enabled — sparse flat baseline
   const w = canvas.width, h = canvas.height, mid = h / 2;
@@ -191,6 +219,7 @@ function drawIdle(t){
 
 function drawReactive(){
   analyser.getByteFrequencyData(dataArray);
+  detectBeatAndFlash();
   const w = canvas.width, h = canvas.height, mid = h / 2;
   ctx.clearRect(0, 0, w, h);
 
