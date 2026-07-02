@@ -172,6 +172,7 @@ const layers = [
 let activeLayerIndex = 0;
 let activeEl = null; // the element actually driving playback right now
 let crossfadeTriggered = false;
+let crossfadeStuckSince = 0; // timestamp of when crossfadeTriggered last flipped true
 const CROSSFADE_MS = 1200;
 
 // starfield state
@@ -343,32 +344,45 @@ function prefetchRest(fromIndex){
 // forces the browser to actually compute the real duration, then
 // snap back to 0. without this, our "fade before it ends" logic has
 // no way to know when the track is about to end and just hangs.
+function timeoutPromise(ms){
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function ensureRealDuration(el){
   if (isFinite(el.duration) && el.duration > 0) return;
 
   if (el.readyState === 0) {
-    await new Promise(resolve => {
-      el.addEventListener("loadedmetadata", resolve, { once: true });
-      el.load();
-    });
+    // race against a timeout — some browsers/files just never fire
+    // loadedmetadata, and without this the whole crossfade (and
+    // therefore the entire playlist) hangs forever waiting on it
+    await Promise.race([
+      new Promise(resolve => {
+        el.addEventListener("loadedmetadata", resolve, { once: true });
+        el.load();
+      }),
+      timeoutPromise(4000)
+    ]);
   }
 
   if (isFinite(el.duration) && el.duration > 0) return;
 
-  await new Promise(resolve => {
-    const onUpdate = () => {
-      el.removeEventListener("timeupdate", onUpdate);
-      el.currentTime = 0;
-      resolve();
-    };
-    el.addEventListener("timeupdate", onUpdate, { once: true });
-    try {
-      el.currentTime = 1e101;
-    } catch {
-      el.removeEventListener("timeupdate", onUpdate);
-      resolve();
-    }
-  });
+  await Promise.race([
+    new Promise(resolve => {
+      const onUpdate = () => {
+        el.removeEventListener("timeupdate", onUpdate);
+        el.currentTime = 0;
+        resolve();
+      };
+      el.addEventListener("timeupdate", onUpdate, { once: true });
+      try {
+        el.currentTime = 1e101;
+      } catch {
+        el.removeEventListener("timeupdate", onUpdate);
+        resolve();
+      }
+    }),
+    timeoutPromise(4000)
+  ]);
 }
 
 // plays a track with no fade — only used when there's just ONE track
@@ -464,6 +478,7 @@ function handleTimeUpdate(e){
   const remaining = el.duration - el.currentTime;
   if (remaining <= CROSSFADE_MS / 1000) {
     crossfadeTriggered = true;
+    crossfadeStuckSince = performance.now();
     currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
     crossfadeToTrack(currentTrackIndex);
   }
@@ -475,6 +490,7 @@ function handleEnded(e){
   const el = e.target;
   if (el !== activeEl || crossfadeTriggered) return;
   crossfadeTriggered = true;
+  crossfadeStuckSince = performance.now();
   currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
   crossfadeToTrack(currentTrackIndex);
 }
@@ -492,12 +508,32 @@ allMediaEls.forEach(el => {
 // isn't moving, force it to the next track instead of dying silently
 let lastWatchdogTime = -1;
 setInterval(() => {
-  if (!activeEl || playlist.length <= 1 || crossfadeTriggered) return;
-  if (activeEl.paused) { lastWatchdogTime = -1; return; }
+  if (!activeEl || playlist.length <= 1) return;
 
+  if (crossfadeTriggered) {
+    // a crossfade is in flight — that's normal and can take a couple
+    // seconds (preload + fade), so give it room. but if it's been
+    // "in progress" way longer than that, it's genuinely hung (this
+    // used to be possible forever before ensureRealDuration got a
+    // timeout) — recover instead of leaving the site silent forever
+    if (performance.now() - crossfadeStuckSince > 8000) {
+      console.warn("crossfade looked stuck — retrying");
+      crossfadeTriggered = false;
+      crossfadeToTrack(currentTrackIndex);
+    }
+    lastWatchdogTime = -1;
+    return;
+  }
+
+  // NOTE: deliberately not skipping when activeEl.paused — a track
+  // pauses itself the instant it naturally ends, and that's exactly
+  // the freeze case this watchdog needs to catch (e.g. if a .play()
+  // call ever gets silently rejected by the browser). currentTime
+  // staying frozen across two ticks is what actually matters.
   if (activeEl.currentTime === lastWatchdogTime) {
     console.warn("playback looked frozen — forcing advance to the next track");
     crossfadeTriggered = true;
+    crossfadeStuckSince = performance.now();
     currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
     crossfadeToTrack(currentTrackIndex);
     lastWatchdogTime = -1;
@@ -673,4 +709,3 @@ function spawnNameParticle(){
 setInterval(spawnNameParticle, 140);
 // occasional double-spawn so it never feels too sparse
 setInterval(() => { if (Math.random() < 0.5) spawnNameParticle(); }, 220);
-
