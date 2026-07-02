@@ -243,9 +243,31 @@ async function fileExists(url){
 
 async function resolveMediaSource(){
   if (await fileExists("music/track.mp4")) {
-    bgVideo.src = "music/track.mp4";
-    bgVideo.hidden = false;
-    mediaEl = bgVideo;
+    try {
+      // full blob preload — fetches the ENTIRE file into memory first,
+      // then hands the video element a local blob: URL. this guarantees
+      // 100% of the file is downloaded before playback can even start,
+      // no streaming, no half-buffered stutter.
+      const entryText = document.querySelector(".entry-text");
+      if (entryText) entryText.textContent = "LOADING...";
+
+      const res = await fetch("music/track.mp4");
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      bgVideo.src = blobUrl;
+      bgVideo.hidden = false;
+      mediaEl = bgVideo;
+
+      if (entryText) entryText.textContent = "CLICK TO ENTER";
+    } catch (err) {
+      // fetch failed (CORS, network, whatever) — fall back to normal
+      // streaming src so the site doesn't just break
+      console.warn("full blob preload failed, falling back to streamed src:", err);
+      bgVideo.src = "music/track.mp4";
+      bgVideo.hidden = false;
+      mediaEl = bgVideo;
+    }
     return;
   }
   if (await fileExists("music/track.mp3")) {
