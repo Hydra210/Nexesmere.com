@@ -420,18 +420,18 @@ html,body{
     width:14px;
     height:14px;
     border-radius:50%;
-    background:#000;
-    border:2px solid #000;
+    background:rgba(255,255,255,.18); /* clear/translucent, not solid */
+    border:1px solid #000; /* thin black stroke */
     box-sizing:border-box;
     transform:translate(-50%,-50%);
     pointer-events:none;
     z-index:9999;
-    transition:background-color .25s ease;
+    transition:border-color .25s ease;
     will-change:transform;
   }
 
   .custom-cursor.is-hover{
-    background:#fff;
+    border-color:#fff; /* the STROKE turns white, fill stays the same */
   }
 }
 
