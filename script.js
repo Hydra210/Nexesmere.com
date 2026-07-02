@@ -23,7 +23,9 @@ document.querySelectorAll(".js-social-icon").forEach(el => {
 });
 
 // ===================================================================
-// MY TIME — hardcoded to YOUR timezone, not the visitor's.
+// MY TIME — hardcoded to YOUR timezone, not the visitor's. shows
+// what time it actually is for you regardless of who's looking or
+// where they're at. change the timeZone string below if you move.
 // ===================================================================
 const MY_TIMEZONE = "America/New_York";
 
