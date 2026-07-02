@@ -336,6 +336,41 @@ function prefetchRest(fromIndex){
   }
 }
 
+// classic browser bug — some files loaded from a blob: URL report
+// .duration as Infinity forever instead of the real length, since
+// blob URLs skip the normal metadata negotiation a streamed URL gets.
+// the fix is a known trick: seek to a huge timestamp once, which
+// forces the browser to actually compute the real duration, then
+// snap back to 0. without this, our "fade before it ends" logic has
+// no way to know when the track is about to end and just hangs.
+async function ensureRealDuration(el){
+  if (isFinite(el.duration) && el.duration > 0) return;
+
+  if (el.readyState === 0) {
+    await new Promise(resolve => {
+      el.addEventListener("loadedmetadata", resolve, { once: true });
+      el.load();
+    });
+  }
+
+  if (isFinite(el.duration) && el.duration > 0) return;
+
+  await new Promise(resolve => {
+    const onUpdate = () => {
+      el.removeEventListener("timeupdate", onUpdate);
+      el.currentTime = 0;
+      resolve();
+    };
+    el.addEventListener("timeupdate", onUpdate, { once: true });
+    try {
+      el.currentTime = 1e101;
+    } catch {
+      el.removeEventListener("timeupdate", onUpdate);
+      resolve();
+    }
+  });
+}
+
 // plays a track with no fade — only used when there's just ONE track
 // in the whole playlist, since native `loop` is smoother and cheaper
 // than fading a track into itself every time it repeats
@@ -353,6 +388,7 @@ async function playSingleTrackLoop(track){
   target.muted = false;
   target.volume = 0.5;
   target.loop = true;
+  await ensureRealDuration(target);
   if (target.tagName === "VIDEO") target.style.opacity = 1;
 
   activeEl = target;
@@ -388,6 +424,7 @@ async function crossfadeToTrack(i){
   newEl.muted = false;
   newEl.loop = false; // looping is handled by the playlist cycling itself now
   newEl.volume = prevEl ? 0 : 0.5;
+  await ensureRealDuration(newEl);
   if (newEl.tagName === "VIDEO") newEl.style.opacity = prevEl ? 0 : 1;
   newEl.play().catch(() => {});
 
@@ -449,6 +486,25 @@ allMediaEls.forEach(el => {
   // stutter mitigation — force a reload if the active source stalls
   el.addEventListener("stalled", () => { if (el === activeEl) el.load(); });
 });
+
+// watchdog — if playback ever straight-up freezes for whatever reason
+// (a stuck decode, another blob quirk, whatever) and currentTime just
+// isn't moving, force it to the next track instead of dying silently
+let lastWatchdogTime = -1;
+setInterval(() => {
+  if (!activeEl || playlist.length <= 1 || crossfadeTriggered) return;
+  if (activeEl.paused) { lastWatchdogTime = -1; return; }
+
+  if (activeEl.currentTime === lastWatchdogTime) {
+    console.warn("playback looked frozen — forcing advance to the next track");
+    crossfadeTriggered = true;
+    currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+    crossfadeToTrack(currentTrackIndex);
+    lastWatchdogTime = -1;
+    return;
+  }
+  lastWatchdogTime = activeEl.currentTime;
+}, 2000);
 
 async function resolveMediaSource(){
   const entryText = document.querySelector(".entry-text");
