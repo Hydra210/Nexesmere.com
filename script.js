@@ -151,14 +151,28 @@ const ctx = canvas.getContext("2d");
 const starsCanvas = document.getElementById("stars");
 const starsCtx = starsCanvas.getContext("2d");
 const audioEl = document.getElementById("bgAudio");
+const audioEl2 = document.getElementById("bgAudio2");
 const bgVideo = document.getElementById("bgVideo");
+const bgVideo2 = document.getElementById("bgVideo2");
 const entryGate = document.getElementById("entryGate");
 const mainCard = document.getElementById("mainCard");
 const nameParticles = document.getElementById("nameParticles");
 
 let audioCtx, analyser, dataArray;
 let audioReady = false;
-let mediaEl = audioEl; // whichever element ends up playing — video or audio
+let mediaEl = audioEl; // whichever element is currently the primary one playing
+
+// two overlapping "layers" (one video + one audio slot each) so we
+// can play the next track underneath the current one and crossfade
+// between them instead of hard-cutting
+const layers = [
+  { video: bgVideo, audio: audioEl },
+  { video: bgVideo2, audio: audioEl2 }
+];
+let activeLayerIndex = 0;
+let activeEl = null; // the element actually driving playback right now
+let crossfadeTriggered = false;
+const CROSSFADE_MS = 1200;
 
 // starfield state
 let stars = [];
@@ -196,6 +210,28 @@ function initStars(){
   }
 }
 
+// pre-rendered glow sprites — drawing these with drawImage is WAY
+// cheaper than recomputing ctx.shadowBlur per star per frame, which
+// was quietly wrecking your GPU process for no visual upside
+const GLOW_SIZE = 24;
+function makeGlowSprite(rgb){
+  const c = document.createElement("canvas");
+  c.width = GLOW_SIZE;
+  c.height = GLOW_SIZE;
+  const g = c.getContext("2d");
+  const grad = g.createRadialGradient(GLOW_SIZE/2, GLOW_SIZE/2, 0, GLOW_SIZE/2, GLOW_SIZE/2, GLOW_SIZE/2);
+  grad.addColorStop(0, `rgba(${rgb},1)`);
+  grad.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grad;
+  g.fillRect(0, 0, GLOW_SIZE, GLOW_SIZE);
+  return c;
+}
+const glowSprites = {
+  white: makeGlowSprite("242,242,237"),
+  blue: makeGlowSprite("150,190,255"),
+  warm: makeGlowSprite("255,225,195")
+};
+
 function drawStars(t){
   const w = starsCanvas.width, h = starsCanvas.height;
   starsCtx.clearRect(0, 0, w, h);
@@ -204,17 +240,10 @@ function drawStars(t){
     const twinkle = Math.sin(t * 0.001 * s.speed + s.phase);
     const alpha = Math.max(0, Math.min(1, s.baseAlpha + twinkle * 0.3));
 
-    let color;
-    if (s.hue === "blue") color = `rgba(150,190,255,${alpha})`;
-    else if (s.hue === "warm") color = `rgba(255,225,195,${alpha})`;
-    else color = `rgba(242,242,237,${alpha})`;
-
-    starsCtx.beginPath();
-    starsCtx.fillStyle = color;
-    starsCtx.shadowColor = color;
-    starsCtx.shadowBlur = s.r * 4;
-    starsCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-    starsCtx.fill();
+    const sprite = glowSprites[s.hue] || glowSprites.white;
+    const size = s.r * 9;
+    starsCtx.globalAlpha = alpha;
+    starsCtx.drawImage(sprite, s.x - size / 2, s.y - size / 2, size, size);
 
     // slow ambient drift, wraps around edges
     s.x += s.driftX;
@@ -224,6 +253,7 @@ function drawStars(t){
     if (s.y < 0) s.y = h;
     if (s.y > h) s.y = 0;
   }
+  starsCtx.globalAlpha = 1;
 }
 
 resizeCanvas();
@@ -306,43 +336,119 @@ function prefetchRest(fromIndex){
   }
 }
 
-async function playTrackAtIndex(i){
-  const track = playlist[i];
-  if (!track) return;
-
+// plays a track with no fade — only used when there's just ONE track
+// in the whole playlist, since native `loop` is smoother and cheaper
+// than fading a track into itself every time it repeats
+async function playSingleTrackLoop(track){
   const isVideo = track.type === "video";
   const target = isVideo ? bgVideo : audioEl;
   const other = isVideo ? audioEl : bgVideo;
 
   other.pause();
-  bgVideo.hidden = !isVideo;
+  if (other.tagName === "VIDEO") other.style.opacity = 0;
 
   const src = await preloadTrack(track);
   target.src = src;
-  target.hidden = false;
-  target.loop = playlist.length === 1; // native loop only makes sense with just one track
+  target.currentTime = 0;
   target.muted = false;
   target.volume = 0.5;
-  target.currentTime = 0;
+  target.loop = true;
+  if (target.tagName === "VIDEO") target.style.opacity = 1;
 
+  activeEl = target;
+  activeLayerIndex = 0;
   mediaEl = target;
   target.play().catch(() => {});
 }
 
-function advanceTrack(fromEl){
-  if (fromEl !== mediaEl) return; // ignore stale events from the now-inactive element
-  if (playlist.length === 0) return;
-  currentTrackIndex = (currentTrackIndex + 1) % playlist.length; // wraps back to track 1
-  playTrackAtIndex(currentTrackIndex);
+// the real crossfade — starts the next track on the OTHER layer at
+// zero volume/opacity, ramps it up while ramping the current one
+// down over CROSSFADE_MS, works for any video<->audio combo
+async function crossfadeToTrack(i){
+  const track = playlist[i];
+  if (!track) return;
+
+  if (playlist.length === 1) {
+    return playSingleTrackLoop(track);
+  }
+
+  const prevEl = activeEl;
+  const newLayerIndex = 1 - activeLayerIndex;
+  const newLayer = layers[newLayerIndex];
+  const isVideo = track.type === "video";
+  const newEl = isVideo ? newLayer.video : newLayer.audio;
+  const newOtherEl = isVideo ? newLayer.audio : newLayer.video;
+
+  newOtherEl.pause();
+  if (newOtherEl.tagName === "VIDEO") newOtherEl.style.opacity = 0;
+
+  const src = await preloadTrack(track);
+  newEl.src = src;
+  newEl.currentTime = 0;
+  newEl.muted = false;
+  newEl.loop = false; // looping is handled by the playlist cycling itself now
+  newEl.volume = prevEl ? 0 : 0.5;
+  if (newEl.tagName === "VIDEO") newEl.style.opacity = prevEl ? 0 : 1;
+  newEl.play().catch(() => {});
+
+  activeEl = newEl;
+  activeLayerIndex = newLayerIndex;
+  mediaEl = newEl;
+  crossfadeTriggered = false; // reset so THIS track can trigger the next crossfade later
+
+  if (!prevEl) return; // first track ever — nothing to fade out
+
+  const start = performance.now();
+  function step(now){
+    const t = Math.min(1, (now - start) / CROSSFADE_MS);
+    newEl.volume = 0.5 * t;
+    if (newEl.tagName === "VIDEO") newEl.style.opacity = t;
+    prevEl.volume = 0.5 * (1 - t);
+    if (prevEl.tagName === "VIDEO") prevEl.style.opacity = 1 - t;
+
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else {
+      prevEl.pause();
+      prevEl.currentTime = 0;
+      if (prevEl.tagName === "VIDEO") prevEl.style.opacity = 0;
+    }
+  }
+  requestAnimationFrame(step);
 }
 
-bgVideo.addEventListener("ended", () => advanceTrack(bgVideo));
-audioEl.addEventListener("ended", () => advanceTrack(audioEl));
+// starts the crossfade to the next track slightly BEFORE the current
+// one physically ends, so the transition is gapless instead of
+// waiting for silence then fading in
+function handleTimeUpdate(e){
+  const el = e.target;
+  if (el !== activeEl || crossfadeTriggered) return;
+  if (!el.duration || !isFinite(el.duration)) return;
+  const remaining = el.duration - el.currentTime;
+  if (remaining <= CROSSFADE_MS / 1000) {
+    crossfadeTriggered = true;
+    currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+    crossfadeToTrack(currentTrackIndex);
+  }
+}
 
-// stutter mitigation — don't let it sit there half-buffered,
-// force a reload if it's the currently active source
-bgVideo.addEventListener("stalled", () => { if (mediaEl === bgVideo) bgVideo.load(); });
-audioEl.addEventListener("stalled", () => { if (mediaEl === audioEl) audioEl.load(); });
+// fallback in case timeupdate granularity ever misses the window —
+// makes sure the playlist never just dead-stops
+function handleEnded(e){
+  const el = e.target;
+  if (el !== activeEl || crossfadeTriggered) return;
+  crossfadeTriggered = true;
+  currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+  crossfadeToTrack(currentTrackIndex);
+}
+
+const allMediaEls = [bgVideo, bgVideo2, audioEl, audioEl2];
+allMediaEls.forEach(el => {
+  el.addEventListener("timeupdate", handleTimeUpdate);
+  el.addEventListener("ended", handleEnded);
+  // stutter mitigation — force a reload if the active source stalls
+  el.addEventListener("stalled", () => { if (el === activeEl) el.load(); });
+});
 
 async function resolveMediaSource(){
   const entryText = document.querySelector(".entry-text");
@@ -364,14 +470,14 @@ function setupAudioGraph(){
   analyser = audioCtx.createAnalyser();
   analyser.fftSize = 256;
 
-  // both elements get wired into the graph up front, since a
+  // all 4 elements get wired into the graph up front, since a
   // MediaElementSourceNode can only ever be created ONCE per element —
-  // this lets the playlist freely swap between video and audio tracks
-  // later without needing to rebuild the graph every time
-  const videoSource = audioCtx.createMediaElementSource(bgVideo);
-  const audioSource = audioCtx.createMediaElementSource(audioEl);
-  videoSource.connect(analyser);
-  audioSource.connect(analyser);
+  // this lets the crossfade freely swap between layers/types later
+  // without rebuilding the graph every time
+  allMediaEls.forEach(el => {
+    const source = audioCtx.createMediaElementSource(el);
+    source.connect(analyser);
+  });
 
   analyser.connect(audioCtx.destination);
   dataArray = new Uint8Array(analyser.frequencyBinCount);
@@ -388,7 +494,7 @@ entryGate.addEventListener("click", async () => {
 
   if (playlist.length > 0) {
     currentTrackIndex = 0;
-    await playTrackAtIndex(0);
+    await crossfadeToTrack(0);
     prefetchRest(0); // load the rest of the playlist in the background
   }
 

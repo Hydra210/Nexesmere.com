@@ -26,6 +26,7 @@ html,body{
   z-index:0;
   filter:blur(24px) brightness(.5) saturate(1.1);
   transform:scale(1.12); /* hides the blurred edge clipping */
+  opacity:0; /* JS crossfades this between 0 and 1 — no more hard on/off */
 }
 
 #stars{
