@@ -156,7 +156,7 @@ const entryGate = document.getElementById("entryGate");
 const mainCard = document.getElementById("mainCard");
 const nameParticles = document.getElementById("nameParticles");
 
-let audioCtx, analyser, dataArray, sourceNode;
+let audioCtx, analyser, dataArray;
 let audioReady = false;
 let mediaEl = audioEl; // whichever element ends up playing — video or audio
 
@@ -229,89 +229,168 @@ function drawStars(t){
 resizeCanvas();
 
 // ===================================================================
-// MEDIA SOURCE — mp4 (video, becomes the blurred background) takes
-// priority over mp3 (audio-only, plain black background)
+// PLAYLIST — numbered tracks (track1, track2, track3...) checked in
+// order, each one independently .mp4 (video bg) or .mp3 (audio-only),
+// mixed freely in any order. loops back to track 1 after the last
+// one plays. falls back to the old unnumbered "music/track.mp4" /
+// "music/track.mp3" naming if no numbered tracks exist.
 // ===================================================================
-async function fileExists(url){
+const MAX_TRACKS = 50;
+
+// this site's render.yaml rewrites every missing path to index.html
+// (SPA-style fallback), so a plain HEAD status check would think
+// EVERY track number "exists" since Render just serves index.html
+// instead of a real 404. checking content-type instead of just the
+// status code is what filters the fakes out.
+async function fileIsRealMedia(url, expectedTypePrefix){
   try {
     const res = await fetch(url, { method: "HEAD" });
-    return res.ok;
+    if (!res.ok) return false;
+    const ct = res.headers.get("content-type") || "";
+    return ct.startsWith(expectedTypePrefix);
   } catch {
     return false;
   }
 }
 
-async function resolveMediaSource(){
-  if (await fileExists("music/track.mp4")) {
-    try {
-      // full blob preload — fetches the ENTIRE file into memory first,
-      // then hands the video element a local blob: URL. this guarantees
-      // 100% of the file is downloaded before playback can even start,
-      // no streaming, no half-buffered stutter.
-      const entryText = document.querySelector(".entry-text");
-      if (entryText) entryText.textContent = "LOADING...";
-
-      const res = await fetch("music/track.mp4");
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-
-      bgVideo.src = blobUrl;
-      bgVideo.hidden = false;
-      mediaEl = bgVideo;
-
-      if (entryText) entryText.textContent = "CLICK TO ENTER";
-    } catch (err) {
-      // fetch failed (CORS, network, whatever) — fall back to normal
-      // streaming src so the site doesn't just break
-      console.warn("full blob preload failed, falling back to streamed src:", err);
-      bgVideo.src = "music/track.mp4";
-      bgVideo.hidden = false;
-      mediaEl = bgVideo;
+async function buildPlaylist(){
+  const list = [];
+  for (let i = 1; i <= MAX_TRACKS; i++){
+    const mp4Url = `music/track${i}.mp4`;
+    const mp3Url = `music/track${i}.mp3`;
+    if (await fileIsRealMedia(mp4Url, "video/")) {
+      list.push({ type: "video", url: mp4Url, blobUrl: null });
+    } else if (await fileIsRealMedia(mp3Url, "audio/")) {
+      list.push({ type: "audio", url: mp3Url, blobUrl: null });
+    } else {
+      break; // numbering stops being contiguous — playlist ends here
     }
-    return;
   }
-  if (await fileExists("music/track.mp3")) {
-    audioEl.src = "music/track.mp3";
+
+  // legacy fallback — no track1 found, check the old unnumbered names
+  if (list.length === 0) {
+    if (await fileIsRealMedia("music/track.mp4", "video/")) {
+      list.push({ type: "video", url: "music/track.mp4", blobUrl: null });
+    } else if (await fileIsRealMedia("music/track.mp3", "audio/")) {
+      list.push({ type: "audio", url: "music/track.mp3", blobUrl: null });
+    }
+  }
+
+  return list;
+}
+
+let playlist = [];
+let currentTrackIndex = 0;
+
+// fully downloads one track into a blob before it plays — same deal
+// as before, no half-buffered streaming stutter
+async function preloadTrack(track){
+  if (track.blobUrl) return track.blobUrl;
+  try {
+    const res = await fetch(track.url);
+    const blob = await res.blob();
+    track.blobUrl = URL.createObjectURL(blob);
+  } catch (err) {
+    console.warn("blob preload failed for", track.url, "— falling back to streamed src:", err);
+  }
+  return track.blobUrl || track.url;
+}
+
+// quietly preloads everything else in the background once one track
+// is playing, so switching tracks is instant instead of buffering
+// mid-playlist
+function prefetchRest(fromIndex){
+  for (let i = 0; i < playlist.length; i++){
+    if (i === fromIndex) continue;
+    preloadTrack(playlist[i]);
+  }
+}
+
+async function playTrackAtIndex(i){
+  const track = playlist[i];
+  if (!track) return;
+
+  const isVideo = track.type === "video";
+  const target = isVideo ? bgVideo : audioEl;
+  const other = isVideo ? audioEl : bgVideo;
+
+  other.pause();
+  bgVideo.hidden = !isVideo;
+
+  const src = await preloadTrack(track);
+  target.src = src;
+  target.hidden = false;
+  target.loop = playlist.length === 1; // native loop only makes sense with just one track
+  target.muted = false;
+  target.volume = 0.5;
+  target.currentTime = 0;
+
+  mediaEl = target;
+  target.play().catch(() => {});
+}
+
+function advanceTrack(fromEl){
+  if (fromEl !== mediaEl) return; // ignore stale events from the now-inactive element
+  if (playlist.length === 0) return;
+  currentTrackIndex = (currentTrackIndex + 1) % playlist.length; // wraps back to track 1
+  playTrackAtIndex(currentTrackIndex);
+}
+
+bgVideo.addEventListener("ended", () => advanceTrack(bgVideo));
+audioEl.addEventListener("ended", () => advanceTrack(audioEl));
+
+// stutter mitigation — don't let it sit there half-buffered,
+// force a reload if it's the currently active source
+bgVideo.addEventListener("stalled", () => { if (mediaEl === bgVideo) bgVideo.load(); });
+audioEl.addEventListener("stalled", () => { if (mediaEl === audioEl) audioEl.load(); });
+
+async function resolveMediaSource(){
+  const entryText = document.querySelector(".entry-text");
+  if (entryText) entryText.textContent = "LOADING...";
+
+  playlist = await buildPlaylist();
+
+  if (playlist.length === 0) {
+    console.warn("no tracks found in /music (checked track1.mp4/mp3 upward, plus legacy track.mp4/mp3) — entry gate will still work, just silently.");
     mediaEl = audioEl;
-    return;
   }
-  console.warn("no music/track.mp4 or music/track.mp3 found — entry gate will still work, just silently.");
-  mediaEl = audioEl;
+
+  if (entryText) entryText.textContent = "CLICK TO ENTER";
 }
 const mediaReady = resolveMediaSource();
 
-// failsafe loop — some mp4s don't loop clean natively if the moov atom
-// is jacked up, so force it manually as a backup to the `loop` attribute
-bgVideo.addEventListener("ended", () => {
-  bgVideo.currentTime = 0;
-  bgVideo.play().catch(() => {});
-});
-
-// stutter mitigation — don't let it sit there half-buffered,
-// force it to reload once we know it's the active source
-bgVideo.addEventListener("stalled", () => bgVideo.load());
-
 function setupAudioGraph(){
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  sourceNode = audioCtx.createMediaElementSource(mediaEl);
   analyser = audioCtx.createAnalyser();
   analyser.fftSize = 256;
-  sourceNode.connect(analyser);
+
+  // both elements get wired into the graph up front, since a
+  // MediaElementSourceNode can only ever be created ONCE per element —
+  // this lets the playlist freely swap between video and audio tracks
+  // later without needing to rebuild the graph every time
+  const videoSource = audioCtx.createMediaElementSource(bgVideo);
+  const audioSource = audioCtx.createMediaElementSource(audioEl);
+  videoSource.connect(analyser);
+  audioSource.connect(analyser);
+
   analyser.connect(audioCtx.destination);
   dataArray = new Uint8Array(analyser.frequencyBinCount);
 }
 
 entryGate.addEventListener("click", async () => {
-  await mediaReady; // make sure we know which file we're playing before wiring the graph
+  await mediaReady; // make sure the playlist is built before wiring the graph
 
   if (!audioReady) {
     setupAudioGraph();
     audioReady = true;
   }
   await audioCtx.resume();
-  mediaEl.muted = false;
-  mediaEl.volume = 0.5;
-  mediaEl.play().catch(() => {});
+
+  if (playlist.length > 0) {
+    currentTrackIndex = 0;
+    await playTrackAtIndex(0);
+    prefetchRest(0); // load the rest of the playlist in the background
+  }
 
   entryGate.classList.add("hidden");
   mainCard.classList.remove("blurred");
