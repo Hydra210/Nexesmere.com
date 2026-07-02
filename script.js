@@ -4,6 +4,32 @@
 const DISCORD_ID = "728856632288608336";
 
 // ===================================================================
+// CUSTOM CURSOR — opaque dot with a black stroke that smoothly turns
+// white when hovering anything clickable. self-contained (builds its
+// own element), only runs on fine-pointer devices since touch screens
+// have no cursor to replace.
+// ===================================================================
+if (window.matchMedia("(pointer: fine)").matches) {
+  const cursorEl = document.createElement("div");
+  cursorEl.className = "custom-cursor";
+  cursorEl.setAttribute("aria-hidden", "true");
+  document.body.appendChild(cursorEl);
+
+  window.addEventListener("mousemove", (e) => {
+    cursorEl.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+  });
+
+  const CURSOR_CLICKABLE = "a, button, input, select, textarea, label, [role='button'], [onclick], .social-btn, .entry-gate";
+
+  document.addEventListener("mouseover", (e) => {
+    if (e.target.closest(CURSOR_CLICKABLE)) cursorEl.classList.add("is-hover");
+  });
+  document.addEventListener("mouseout", (e) => {
+    if (e.target.closest(CURSOR_CLICKABLE)) cursorEl.classList.remove("is-hover");
+  });
+}
+
+// ===================================================================
 // ICON FALLBACKS — hides an icon gracefully if the asset is missing,
 // instead of leaving a broken-image box on the page
 // ===================================================================

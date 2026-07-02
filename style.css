@@ -339,7 +339,6 @@ html,body{
   align-items:flex-start;
   text-align:left;
   gap:2px;
-  border-left:2px solid var(--line);
   padding:6px 0 6px 12px;
   border-radius:8px;
   background:rgba(242,242,237,.03);
@@ -405,10 +404,36 @@ html,body{
   }
 }
 
+/* ---------- custom cursor ---------- */
+/* opaque dot, black stroke, smoothly turns white over anything
+   clickable. only kicks in on fine-pointer (mouse) devices — touch
+   screens don't have a cursor to replace, so we leave those alone. */
+@media (pointer: fine){
+  html, body, a, button, input, select, textarea, label, [role="button"]{
+    cursor:none !important;
+  }
 
+  .custom-cursor{
+    position:fixed;
+    top:0;
+    left:0;
+    width:14px;
+    height:14px;
+    border-radius:50%;
+    background:#000;
+    border:2px solid #000;
+    box-sizing:border-box;
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+    z-index:9999;
+    transition:background-color .25s ease;
+    will-change:transform;
+  }
 
-
-
+  .custom-cursor.is-hover{
+    background:#fff;
+  }
+}
 
 
 
