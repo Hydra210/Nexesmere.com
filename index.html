@@ -13,8 +13,8 @@
 
   <video id="bgVideo" class="bg-video" muted playsinline preload="auto"></video>
   <video id="bgVideo2" class="bg-video" muted playsinline preload="auto"></video>
-  <canvas id="stars"></canvas>
-  <canvas id="viz"></canvas>
+  <canvas id="stars" class="stars-canvas"></canvas>
+  <canvas id="viz" class="viz-canvas"></canvas>
   <div class="grain"></div>
 
   <div id="myTimeWidget" class="my-time-widget">
@@ -26,13 +26,13 @@
     <span class="entry-text">CLICK TO ENTER</span>
   </div>
 
-  <main id="mainCard" class="card blurred">
+  <main id="mainCard" class="card is-blurred">
 
     <div class="avatar-wrap">
       <img id="decoRing" class="deco-ring" src="" alt="" hidden>
       <img id="avatar" class="avatar" src="" alt="avatar">
       <span id="statusDot" class="status-dot" data-status="offline"></span>
-      <img id="dndIcon" class="dnd-icon" src="icons/dnd.png" alt="" hidden onerror="this.hidden=true; this.dataset.broken='1'; console.warn('missing icon: icons/dnd.png');">
+      <img id="dndIcon" class="dnd-icon js-dnd-icon" src="icons/dnd.png" alt="" hidden>
     </div>
 
     <div class="name-wrap">
@@ -55,13 +55,13 @@
 
     <div class="socials">
       <a class="social-btn" href="https://www.instagram.com/pat2769_/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-        <img src="icons/instagram.png" alt="Instagram" class="social-icon" onerror="this.closest('.social-btn').style.display='none'; console.warn('missing icon: icons/instagram.png');">
+        <img src="icons/instagram.png" alt="Instagram" class="social-icon js-social-icon">
       </a>
       <a class="social-btn" href="http://discord.com/users/728856632288608336" target="_blank" rel="noopener noreferrer" aria-label="Discord">
-        <img src="icons/discord.png" alt="Discord" class="social-icon" onerror="this.closest('.social-btn').style.display='none'; console.warn('missing icon: icons/discord.png');">
+        <img src="icons/discord.png" alt="Discord" class="social-icon js-social-icon">
       </a>
       <a class="social-btn" href="https://www.roblox.com/users/1230783705/profile" target="_blank" rel="noopener noreferrer" aria-label="Roblox">
-        <img src="icons/roblox.png" alt="Roblox" class="social-icon" onerror="this.closest('.social-btn').style.display='none'; console.warn('missing icon: icons/roblox.png');">
+        <img src="icons/roblox.png" alt="Roblox" class="social-icon js-social-icon">
       </a>
     </div>
 
@@ -73,3 +73,37 @@
   <script src="script.js"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+<!--
+                                                                                                                                     
+                   KKKKKKKKK    KKKKKKK                                                                                              
+     @@@@@@@@@     K:::::::K    K:::::K                                                                                              
+   @@:::::::::@@   K:::::::K    K:::::K                                                                                              
+ @@:::::::::::::@@ K:::::::K   K::::::K                                                                                              
+@:::::::@@@:::::::@KK::::::K  K:::::KKK  aaaaaaaaaaaaa    aaaaaaaaaaaaa  nnnn  nnnnnnnn yyyyyyy           yyyyyyyxxxxxxx      xxxxxxx
+@::::::@   @::::::@  K:::::K K:::::K     a::::::::::::a   a::::::::::::a n:::nn::::::::nny:::::y         y:::::y  x:::::x    x:::::x 
+@:::::@  @@@@:::::@  K::::::K:::::K      aaaaaaaaa:::::a  aaaaaaaaa:::::an::::::::::::::nny:::::y       y:::::y    x:::::x  x:::::x  
+@:::::@  @::::::::@  K:::::::::::K                a::::a           a::::ann:::::::::::::::ny:::::y     y:::::y      x:::::xx:::::x   
+@:::::@  @::::::::@  K:::::::::::K         aaaaaaa:::::a    aaaaaaa:::::a  n:::::nnnn:::::n y:::::y   y:::::y        x::::::::::x    
+@:::::@  @:::::::@@  K::::::K:::::K      aa::::::::::::a  aa::::::::::::a  n::::n    n::::n  y:::::y y:::::y          x::::::::x     
+@:::::@  @@@@@@@@    K:::::K K:::::K    a::::aaaa::::::a a::::aaaa::::::a  n::::n    n::::n   y:::::y:::::y           x::::::::x     
+@::::::@           KK::::::K  K:::::KKKa::::a    a:::::aa::::a    a:::::a  n::::n    n::::n    y:::::::::y           x::::::::::x    
+@:::::::@@@@@@@@   K:::::::K   K::::::Ka::::a    a:::::aa::::a    a:::::a  n::::n    n::::n     y:::::::y           x:::::xx:::::x   
+ @@:::::::::::::@  K:::::::K    K:::::Ka:::::aaaa::::::aa:::::aaaa::::::a  n::::n    n::::n      y:::::y           x:::::x  x:::::x  
+   @@:::::::::::@  K:::::::K    K:::::K a::::::::::aa:::aa::::::::::aa:::a n::::n    n::::n     y:::::y           x:::::x    x:::::x 
+     @@@@@@@@@@@   KKKKKKKKK    KKKKKKK  aaaaaaaaaa  aaaa aaaaaaaaaa  aaaa nnnnnn    nnnnnn    y:::::y           xxxxxxx      xxxxxxx
+                                                                                              y:::::y                                
+                                                                                             y:::::y                                 
+                                                                                            y:::::y                                  
+                                                                                           y:::::y                                   
+                                                                                          yyyyyyy
+-->
