@@ -4,15 +4,24 @@
 const DISCORD_ID = "728856632288608336";
 
 // ===================================================================
-// CLOCK
+// MY TIME — hardcoded to YOUR timezone, not the visitor's. shows
+// what time it actually is for you regardless of who's looking or
+// where they're at. change the timeZone string below if you move.
 // ===================================================================
-function tickClock(){
-  const el = document.getElementById("clock");
-  const now = new Date();
-  el.textContent = now.toTimeString().slice(0,8);
+const MY_TIMEZONE = "America/New_York";
+
+function tickMyTime(){
+  const el = document.getElementById("myTimeValue");
+  if (!el) return;
+  el.textContent = new Date().toLocaleTimeString("en-US", {
+    timeZone: MY_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true
+  });
 }
-setInterval(tickClock, 1000);
-tickClock();
+setInterval(tickMyTime, 1000);
+tickMyTime();
 
 // ===================================================================
 // LANYARD — live discord presence over websocket
@@ -284,7 +293,25 @@ entryGate.addEventListener("click", async () => {
 
   entryGate.classList.add("hidden");
   mainCard.classList.remove("blurred");
+
+  // tells the browser this is an active playback session so it backs
+  // off throttling it as hard when the tab loses focus
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.playbackState = "playing";
+  }
 }, { once: true });
+
+// tab-switch cutout fix — browsers auto-suspend the AudioContext when
+// the tab loses focus/visibility to save power, and don't always
+// resume it cleanly on their own. force it back on when we return.
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && audioReady && audioCtx && audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+  if (!document.hidden && mediaEl && mediaEl.paused && audioReady) {
+    mediaEl.play().catch(() => {});
+  }
+});
 
 function drawIdle(t){
   // ambient idle motion before audio is enabled — sparse flat baseline
