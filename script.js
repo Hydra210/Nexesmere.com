@@ -404,6 +404,12 @@ async function ensureRealDuration(el){
   ]);
 }
 
+// hard clamp so a stray float rounding error can NEVER throw
+// IndexSizeError on .volume again, no matter what causes it
+function clamp01(v){
+  return Math.max(0, Math.min(1, v));
+}
+
 // plays a track with no fade — only used when there's just ONE track
 // in the whole playlist, since native `loop` is smoother and cheaper
 // than fading a track into itself every time it repeats
@@ -427,6 +433,7 @@ async function playSingleTrackLoop(track){
   activeEl = target;
   activeLayerIndex = 0;
   mediaEl = target;
+  crossfadeTriggered = false; // nothing fading — safe to watch again immediately
   target.play().catch(() => {});
 }
 
@@ -464,16 +471,24 @@ async function crossfadeToTrack(i){
   activeEl = newEl;
   activeLayerIndex = newLayerIndex;
   mediaEl = newEl;
-  crossfadeTriggered = false; // reset so THIS track can trigger the next crossfade later
 
-  if (!prevEl) return; // first track ever — nothing to fade out
+  if (!prevEl) {
+    crossfadeTriggered = false; // no old track to fade — this crossfade is instantly done
+    return;
+  }
 
+  // NOTE: crossfadeTriggered stays TRUE for the entire fade animation
+  // below, not just the track-swap above — clearing it early was the
+  // actual bug. it let the watchdog think nothing was in-flight while
+  // this fade was still running, so it fired a SECOND overlapping
+  // crossfade on top of this one, and the two fights over .volume
+  // sent it negative and crashed the whole thing.
   const start = performance.now();
   function step(now){
-    const t = Math.min(1, (now - start) / CROSSFADE_MS);
-    newEl.volume = 0.5 * t;
+    const t = Math.min(1, Math.max(0, (now - start) / CROSSFADE_MS));
+    newEl.volume = clamp01(0.5 * t);
     if (newEl.tagName === "VIDEO") newEl.style.opacity = t;
-    prevEl.volume = 0.5 * (1 - t);
+    prevEl.volume = clamp01(0.5 * (1 - t));
     if (prevEl.tagName === "VIDEO") prevEl.style.opacity = 1 - t;
 
     if (t < 1) {
@@ -482,6 +497,7 @@ async function crossfadeToTrack(i){
       prevEl.pause();
       prevEl.currentTime = 0;
       if (prevEl.tagName === "VIDEO") prevEl.style.opacity = 0;
+      crossfadeTriggered = false; // fade animation is ACTUALLY done now
     }
   }
   requestAnimationFrame(step);
