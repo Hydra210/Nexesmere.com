@@ -4,9 +4,26 @@
 const DISCORD_ID = "728856632288608336";
 
 // ===================================================================
-// MY TIME — hardcoded to YOUR timezone, not the visitor's. shows
-// what time it actually is for you regardless of who's looking or
-// where they're at. change the timeZone string below if you move.
+// ICON FALLBACKS — hides an icon gracefully if the asset is missing,
+// instead of leaving a broken-image box on the page
+// ===================================================================
+document.querySelectorAll(".js-dnd-icon").forEach(el => {
+  el.addEventListener("error", () => {
+    el.hidden = true;
+    el.dataset.broken = "1";
+    console.warn("missing icon:", el.getAttribute("src"));
+  });
+});
+
+document.querySelectorAll(".js-social-icon").forEach(el => {
+  el.addEventListener("error", () => {
+    el.closest(".social-btn").style.display = "none";
+    console.warn("missing icon:", el.getAttribute("src"));
+  });
+});
+
+// ===================================================================
+// MY TIME — hardcoded to YOUR timezone, not the visitor's.
 // ===================================================================
 const MY_TIMEZONE = "America/New_York";
 
@@ -590,8 +607,8 @@ entryGate.addEventListener("click", async () => {
     prefetchRest(0); // load the rest of the playlist in the background
   }
 
-  entryGate.classList.add("hidden");
-  mainCard.classList.remove("blurred");
+  entryGate.classList.add("is-hidden");
+  mainCard.classList.remove("is-blurred");
 
   // tells the browser this is an active playback session so it backs
   // off throttling it as hard when the tab loses focus
@@ -709,3 +726,37 @@ function spawnNameParticle(){
 setInterval(spawnNameParticle, 140);
 // occasional double-spawn so it never feels too sparse
 setInterval(() => { if (Math.random() < 0.5) spawnNameParticle(); }, 220);
+
+
+
+
+
+
+
+
+
+
+/*
+                                                                                                                                     
+                   KKKKKKKKK    KKKKKKK                                                                                              
+     @@@@@@@@@     K:::::::K    K:::::K                                                                                              
+   @@:::::::::@@   K:::::::K    K:::::K                                                                                              
+ @@:::::::::::::@@ K:::::::K   K::::::K                                                                                              
+@:::::::@@@:::::::@KK::::::K  K:::::KKK  aaaaaaaaaaaaa    aaaaaaaaaaaaa  nnnn  nnnnnnnn yyyyyyy           yyyyyyyxxxxxxx      xxxxxxx
+@::::::@   @::::::@  K:::::K K:::::K     a::::::::::::a   a::::::::::::a n:::nn::::::::nny:::::y         y:::::y  x:::::x    x:::::x 
+@:::::@  @@@@:::::@  K::::::K:::::K      aaaaaaaaa:::::a  aaaaaaaaa:::::an::::::::::::::nny:::::y       y:::::y    x:::::x  x:::::x  
+@:::::@  @::::::::@  K:::::::::::K                a::::a           a::::ann:::::::::::::::ny:::::y     y:::::y      x:::::xx:::::x   
+@:::::@  @::::::::@  K:::::::::::K         aaaaaaa:::::a    aaaaaaa:::::a  n:::::nnnn:::::n y:::::y   y:::::y        x::::::::::x    
+@:::::@  @:::::::@@  K::::::K:::::K      aa::::::::::::a  aa::::::::::::a  n::::n    n::::n  y:::::y y:::::y          x::::::::x     
+@:::::@  @@@@@@@@    K:::::K K:::::K    a::::aaaa::::::a a::::aaaa::::::a  n::::n    n::::n   y:::::y:::::y           x::::::::x     
+@::::::@           KK::::::K  K:::::KKKa::::a    a:::::aa::::a    a:::::a  n::::n    n::::n    y:::::::::y           x::::::::::x    
+@:::::::@@@@@@@@   K:::::::K   K::::::Ka::::a    a:::::aa::::a    a:::::a  n::::n    n::::n     y:::::::y           x:::::xx:::::x   
+ @@:::::::::::::@  K:::::::K    K:::::Ka:::::aaaa::::::aa:::::aaaa::::::a  n::::n    n::::n      y:::::y           x:::::x  x:::::x  
+   @@:::::::::::@  K:::::::K    K:::::K a::::::::::aa:::aa::::::::::aa:::a n::::n    n::::n     y:::::y           x:::::x    x:::::x 
+     @@@@@@@@@@@   KKKKKKKKK    KKKKKKK  aaaaaaaaaa  aaaa aaaaaaaaaa  aaaa nnnnnn    nnnnnn    y:::::y           xxxxxxx      xxxxxxx
+                                                                                              y:::::y                                
+                                                                                             y:::::y                                 
+                                                                                            y:::::y                                  
+                                                                                           y:::::y                                   
+                                                                                          yyyyyyy
+*/
