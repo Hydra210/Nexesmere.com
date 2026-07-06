@@ -94,11 +94,9 @@ async def get_roblox_profile(user_id: int) -> dict[str, Any]:
 # mounted last so the /api routes above always take priority over the catch-all
 app.mount("/", StaticFiles(directory=".", html=True), name="static")
 
-#  _   _                                                   
-# | \ | |  ___ __  __ ___  ___  _ __ ___    ___  _ __  ___ 
-# |  \| | / _ \\ \/ // _ \/ __|| '_ ` _ \  / _ \| '__|/ _ \
-# | |\  ||  __/ >  <|  __/\__ \| | | | | ||  __/| |  |  __/
-# |_| \_| \___|/_/\_\___||___/|_| |_| |_| \___||_|   \___|
-#                                          Proporty Of @Nexesmere.
+# ===================================================================
+# CREDITS — paste your Nexesmere ASCII block here, same as your other
+# backend files. left blank for now, didn't want to guess at it.
+# ===================================================================
 
 

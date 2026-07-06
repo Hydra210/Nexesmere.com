@@ -402,20 +402,33 @@ button.social-btn{
 }
 
 /* ---------- social preview panel ---------- */
+/* collapsed by default — expands open, then the content fades in
+   slightly after, instead of popping in all at once */
 .social-preview-panel{
   width:100%;
-  margin-top:16px;
-  padding:16px;
+  max-height:0;
+  margin-top:0;
+  padding:0 16px;
+  opacity:0;
+  overflow:hidden;
   background:rgba(242,242,237,.03);
-  border:1px solid var(--line);
+  border:1px solid transparent;
   border-radius:16px;
   text-align:left;
-  animation:previewIn var(--transition-slow) ease;
+  transition:
+    max-height var(--transition-slow) ease,
+    margin-top var(--transition-slow) ease,
+    padding var(--transition-slow) ease,
+    border-color var(--transition-slow) ease,
+    opacity var(--transition-fast) ease .12s;
 }
 
-@keyframes previewIn{
-  from{ opacity:0; transform:translateY(-6px); }
-  to{ opacity:1; transform:translateY(0); }
+.social-preview-panel.is-open{
+  max-height:320px;
+  margin-top:16px;
+  padding:16px;
+  opacity:1;
+  border-color:var(--line);
 }
 
 .preview-header{
@@ -529,6 +542,7 @@ button.social-btn{
     background-clip:initial;
     color:var(--fg);
   }
+  .social-preview-panel{ transition:none; }
 }
 
 /* ---------- custom cursor ---------- */

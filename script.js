@@ -214,7 +214,7 @@ const PROFILE_DATA = {
     pfp: "icons/preview-instagram.jpg", // drop a saved copy of your pfp here — the CDN link in the html you sent is signed and expires
     username: "pat2769_",
     displayName: "PAT😝",
-    posts: "FILL ME IN", // wasn't in the page you saved — check the public profile grid page for this
+    posts: 38,
     bio: "----------------------\n┆　┆　┆　┆　┆\n┆　┆  ࣪ ˖☆ ࣪⭑┆ ݁˖ .☆ . ݁ ˖ \n☆⊹ ࣪ ┆ ˖ ࣪　⊹ ࣪ ★ ⋆.˚  ⊹ ࣪\n   ࣪ ˖⋆˚★ ₊ ⊹　  ࣪˖ ࣪ ₊  ࣪ ˖　\n. ݁　⊹ ࣪ ˖　　　 ࣪ ˖",
     url: "https://www.instagram.com/pat2769_/"
   }
@@ -346,7 +346,7 @@ function renderSocialPreview(platform){
 }
 
 function closeSocialPreview(){
-  previewPanel.hidden = true;
+  previewPanel.classList.remove("is-open");
   document.querySelectorAll(".js-preview-trigger").forEach(btn => {
     btn.classList.remove("is-active");
     btn.setAttribute("aria-expanded", "false");
@@ -362,7 +362,7 @@ function openSocialPreview(platform, btn){
   btn.classList.add("is-active");
   btn.setAttribute("aria-expanded", "true");
   renderSocialPreview(platform);
-  previewPanel.hidden = false;
+  previewPanel.classList.add("is-open");
   openPreviewPlatform = platform;
 }
 
