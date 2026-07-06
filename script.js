@@ -112,6 +112,8 @@ function connectLanyard(){
 }
 
 function renderPresence(data){
+  lastPresenceData = data; // keep the latest payload around for the discord preview panel
+
   const user = data.discord_user;
   const displayNameEl = document.getElementById("displayName");
   const usernameEl = document.getElementById("username");
@@ -170,6 +172,10 @@ function renderPresence(data){
     const detail = a.details ? `${a.name} — ${a.details}` : a.name;
     feed.appendChild(buildRow(label, detail));
   });
+
+  // keeps the discord preview panel live if it's already open when a new
+  // presence update comes in, instead of freezing on whatever it had first
+  if (openPreviewPlatform === "discord") renderDiscordPreview();
 }
 
 function buildRow(eyebrow, detail){
@@ -186,7 +192,190 @@ function buildRow(eyebrow, detail){
   return row;
 }
 
+let lastPresenceData = null; // most recent lanyard payload — declared before connectLanyard() runs
+let openPreviewPlatform = null; // which preview panel is currently open, if any
+
 connectLanyard();
+
+// ===================================================================
+// SOCIAL PREVIEWS — dropdown panel under the social row showing
+// profile info per platform. discord is fully live off the lanyard
+// payload above. roblox is fetched live from our own backend (see
+// server.py) which proxies roblox's api server-side, since browsers
+// can't call roblox directly (their api never sends back
+// Access-Control-Allow-Origin, so the request gets blocked by CORS
+// before the response reaches JS — a server has no such restriction).
+// instagram is still filled in by hand below since there's no api at
+// all for looking up an arbitrary profile without owning the account.
+// update PROFILE_DATA.instagram whenever that changes.
+// ===================================================================
+const PROFILE_DATA = {
+  instagram: {
+    pfp: "icons/preview-instagram.jpg", // drop a saved copy of your pfp here — the CDN link in the html you sent is signed and expires
+    username: "pat2769_",
+    displayName: "PAT😝",
+    posts: "FILL ME IN", // wasn't in the page you saved — check the public profile grid page for this
+    bio: "----------------------\n┆　┆　┆　┆　┆\n┆　┆  ࣪ ˖☆ ࣪⭑┆ ݁˖ .☆ . ݁ ˖ \n☆⊹ ࣪ ┆ ˖ ࣪　⊹ ࣪ ★ ⋆.˚  ⊹ ࣪\n   ࣪ ˖⋆˚★ ₊ ⊹　  ࣪˖ ࣪ ₊  ࣪ ˖　\n. ݁　⊹ ࣪ ˖　　　 ࣪ ˖",
+    url: "https://www.instagram.com/pat2769_/"
+  }
+};
+
+const ROBLOX_USER_ID = "1230783705";
+const ROBLOX_PROFILE_URL = "https://www.roblox.com/users/1230783705/profile";
+let robloxProfileCache = null; // avoids re-hitting our own backend every time the panel is reopened
+
+const PLACEHOLDER_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' fill='%23232320'/%3E%3Ccircle cx='24' cy='19' r='9' fill='%237a7a76'/%3E%3Cellipse cx='24' cy='42' rx='16' ry='11' fill='%237a7a76'/%3E%3C/svg%3E";
+
+const previewPanel = document.getElementById("socialPreviewPanel");
+const previewAvatar = document.getElementById("previewAvatar");
+const previewDisplayName = document.getElementById("previewDisplayName");
+const previewUsername = document.getElementById("previewUsername");
+const previewStats = document.getElementById("previewStats");
+const previewBio = document.getElementById("previewBio");
+const previewVisitBtn = document.getElementById("previewVisitBtn");
+
+previewAvatar.addEventListener("error", () => { previewAvatar.src = PLACEHOLDER_AVATAR; });
+
+function buildPreviewStat(label, value){
+  const wrap = document.createElement("div");
+  wrap.className = "preview-stat";
+  const l = document.createElement("span");
+  l.className = "preview-stat-label";
+  l.textContent = label;
+  const v = document.createElement("span");
+  v.className = "preview-stat-value";
+  v.textContent = value;
+  wrap.appendChild(l);
+  wrap.appendChild(v);
+  return wrap;
+}
+
+function renderDiscordPreview(){
+  if (!lastPresenceData) {
+    previewAvatar.src = PLACEHOLDER_AVATAR;
+    previewDisplayName.textContent = "loading...";
+    previewUsername.textContent = "";
+    previewStats.innerHTML = "";
+    previewBio.textContent = "";
+    return;
+  }
+
+  const user = lastPresenceData.discord_user;
+  const ext = user.avatar && user.avatar.startsWith("a_") ? "gif" : "png";
+  previewAvatar.src = user.avatar
+    ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${ext}?size=128`
+    : `https://cdn.discordapp.com/embed/avatars/0.png`;
+
+  previewDisplayName.textContent = user.global_name || user.username || "unknown";
+  previewUsername.textContent = "@" + (user.username || "unknown");
+
+  previewStats.innerHTML = "";
+  previewStats.appendChild(buildPreviewStat("Status", (lastPresenceData.discord_status || "offline").toUpperCase()));
+
+  // "visibility" — which client(s) you're actively signed in on, since
+  // discord doesn't expose a real privacy toggle through the public api
+  const platforms = [];
+  if (lastPresenceData.active_on_discord_desktop) platforms.push("Desktop");
+  if (lastPresenceData.active_on_discord_mobile) platforms.push("Mobile");
+  if (lastPresenceData.active_on_discord_web) platforms.push("Web");
+  previewStats.appendChild(buildPreviewStat("Visibility", platforms.length ? platforms.join(", ") : "Offline"));
+
+  // bio comes from lanyard's kv store, not the presence payload itself —
+  // set it once via: DM the lanyard bot ".apikey", then
+  // PUT https://api.lanyard.rest/v1/users/728856632288608336/kv/bio
+  // with your bio text as the request body
+  previewBio.textContent = (lastPresenceData.kv && lastPresenceData.kv.bio) || "no bio set yet — add one via lanyard's kv store";
+
+  previewVisitBtn.href = "http://discord.com/users/728856632288608336";
+}
+
+function renderInstagramPreview(){
+  const d = PROFILE_DATA.instagram;
+  previewAvatar.src = d.pfp;
+  previewDisplayName.textContent = d.displayName;
+  previewUsername.textContent = "@" + d.username;
+  previewStats.innerHTML = "";
+  previewStats.appendChild(buildPreviewStat("Posts", d.posts));
+  previewBio.textContent = d.bio;
+  previewVisitBtn.href = d.url;
+}
+
+function applyRobloxData(data){
+  previewAvatar.src = data.pfp || PLACEHOLDER_AVATAR;
+  previewDisplayName.textContent = data.displayName || data.username || "unknown";
+  previewUsername.textContent = "@" + (data.username || "unknown");
+  previewStats.innerHTML = "";
+  previewBio.textContent = data.bio || "no bio set";
+  previewVisitBtn.href = ROBLOX_PROFILE_URL;
+}
+
+async function renderRobloxPreview(){
+  if (robloxProfileCache) {
+    applyRobloxData(robloxProfileCache);
+    return;
+  }
+
+  previewAvatar.src = PLACEHOLDER_AVATAR;
+  previewDisplayName.textContent = "loading...";
+  previewUsername.textContent = "";
+  previewStats.innerHTML = "";
+  previewBio.textContent = "";
+  previewVisitBtn.href = ROBLOX_PROFILE_URL;
+
+  try {
+    const res = await fetch(`/api/roblox/${ROBLOX_USER_ID}`);
+    if (!res.ok) throw new Error(`bad response: ${res.status}`);
+    const data = await res.json();
+    robloxProfileCache = data;
+    applyRobloxData(data);
+  } catch (err) {
+    console.warn("roblox preview fetch failed:", err);
+    previewDisplayName.textContent = "couldn't load";
+    previewBio.textContent = "roblox lookup failed — try again in a bit";
+  }
+}
+
+function renderSocialPreview(platform){
+  if (platform === "discord") {
+    renderDiscordPreview();
+  } else if (platform === "roblox") {
+    renderRobloxPreview();
+  } else {
+    renderInstagramPreview();
+  }
+}
+
+function closeSocialPreview(){
+  previewPanel.hidden = true;
+  document.querySelectorAll(".js-preview-trigger").forEach(btn => {
+    btn.classList.remove("is-active");
+    btn.setAttribute("aria-expanded", "false");
+  });
+  openPreviewPlatform = null;
+}
+
+function openSocialPreview(platform, btn){
+  document.querySelectorAll(".js-preview-trigger").forEach(b => {
+    b.classList.remove("is-active");
+    b.setAttribute("aria-expanded", "false");
+  });
+  btn.classList.add("is-active");
+  btn.setAttribute("aria-expanded", "true");
+  renderSocialPreview(platform);
+  previewPanel.hidden = false;
+  openPreviewPlatform = platform;
+}
+
+document.querySelectorAll(".js-preview-trigger").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const platform = btn.dataset.platform;
+    if (openPreviewPlatform === platform) {
+      closeSocialPreview();
+    } else {
+      openSocialPreview(platform, btn);
+    }
+  });
+});
 
 // ===================================================================
 // AUDIO-REACTIVE VISUALIZER

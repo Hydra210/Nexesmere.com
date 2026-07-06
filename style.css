@@ -371,6 +371,21 @@ html,body{
   transition:transform var(--transition-fast) ease, filter var(--transition-fast) ease;
 }
 
+/* two of the four socials are now <button> elements (they toggle a
+   preview instead of navigating) — strip the default button chrome
+   so they look identical to the <a> ones */
+button.social-btn{
+  background:none;
+  border:none;
+  padding:0;
+  font:inherit;
+  color:inherit;
+}
+
+.social-btn.is-active{
+  filter:drop-shadow(0 6px 14px rgba(242,242,237,.35));
+}
+
 .social-icon{
   width:100%;
   height:100%;
@@ -384,6 +399,119 @@ html,body{
 
 .social-btn:active{
   transform:translateY(-1px);
+}
+
+/* ---------- social preview panel ---------- */
+.social-preview-panel{
+  width:100%;
+  margin-top:16px;
+  padding:16px;
+  background:rgba(242,242,237,.03);
+  border:1px solid var(--line);
+  border-radius:16px;
+  text-align:left;
+  animation:previewIn var(--transition-slow) ease;
+}
+
+@keyframes previewIn{
+  from{ opacity:0; transform:translateY(-6px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+
+.preview-header{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.preview-avatar{
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  object-fit:cover;
+  border:1px solid var(--line);
+  background:var(--line);
+  flex-shrink:0;
+}
+
+.preview-id{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  min-width:0;
+}
+
+.preview-display-name{
+  font-size:14px;
+  font-weight:700;
+  color:var(--fg);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.preview-username{
+  font-size:11px;
+  letter-spacing:.05em;
+  color:var(--mid);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.preview-stats{
+  display:flex;
+  gap:18px;
+  margin-top:12px;
+  flex-wrap:wrap;
+}
+
+.preview-stat{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+.preview-stat-label{
+  font-size:9px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--mid);
+}
+
+.preview-stat-value{
+  font-size:12.5px;
+  color:var(--fg);
+}
+
+.preview-bio{
+  margin-top:12px;
+  font-size:12px;
+  line-height:1.5;
+  color:var(--fg);
+  opacity:.85;
+  white-space:pre-line;
+}
+
+.preview-visit-btn{
+  display:inline-block;
+  margin-top:14px;
+  padding:9px 16px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10.5px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--fg);
+  background:rgba(242,242,237,.06);
+  border:1px solid var(--line);
+  border-radius:10px;
+  text-decoration:none;
+  transition:background var(--transition-fast) ease, transform var(--transition-fast) ease;
+}
+
+.preview-visit-btn:hover{
+  background:rgba(242,242,237,.12);
+  transform:translateY(-2px);
 }
 
 @media (max-width:480px){

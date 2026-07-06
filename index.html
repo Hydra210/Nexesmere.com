@@ -54,18 +54,31 @@
     <div class="divider"></div>
 
     <div class="socials">
-      <a class="social-btn" href="https://www.instagram.com/pat2769_/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+      <button type="button" class="social-btn js-preview-trigger" data-platform="instagram" aria-label="Instagram" aria-expanded="false">
         <img src="icons/instagram.png" alt="Instagram" class="social-icon js-social-icon">
-      </a>
-      <a class="social-btn" href="http://discord.com/users/728856632288608336" target="_blank" rel="noopener noreferrer" aria-label="Discord">
+      </button>
+      <button type="button" class="social-btn js-preview-trigger" data-platform="discord" aria-label="Discord" aria-expanded="false">
         <img src="icons/discord.png" alt="Discord" class="social-icon js-social-icon">
-      </a>
-      <a class="social-btn" href="https://www.roblox.com/users/1230783705/profile" target="_blank" rel="noopener noreferrer" aria-label="Roblox">
+      </button>
+      <button type="button" class="social-btn js-preview-trigger" data-platform="roblox" aria-label="Roblox" aria-expanded="false">
         <img src="icons/roblox.png" alt="Roblox" class="social-icon js-social-icon">
-      </a>
+      </button>
       <a class="social-btn" href="https://exedevelopement.com/sentinel/" target="_blank" rel="noopener noreferrer" aria-label="Sentinel">
         <img src="icons/sentinelALT.png" alt="Sentinel" class="social-icon js-social-icon">
       </a>
+    </div>
+
+    <div id="socialPreviewPanel" class="social-preview-panel" hidden>
+      <div class="preview-header">
+        <img id="previewAvatar" class="preview-avatar" src="" alt="">
+        <div class="preview-id">
+          <span id="previewDisplayName" class="preview-display-name">—</span>
+          <span id="previewUsername" class="preview-username">—</span>
+        </div>
+      </div>
+      <div id="previewStats" class="preview-stats"></div>
+      <p id="previewBio" class="preview-bio"></p>
+      <a id="previewVisitBtn" class="preview-visit-btn" href="#" target="_blank" rel="noopener noreferrer">go to site</a>
     </div>
 
   </main>
