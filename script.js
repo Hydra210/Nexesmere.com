@@ -284,7 +284,16 @@ function renderDiscordPreview(){
   // set it once via: DM the lanyard bot ".apikey", then
   // PUT https://api.lanyard.rest/v1/users/728856632288608336/kv/bio
   // with your bio text as the request body
-  previewBio.textContent = (lastPresenceData.kv && lastPresenceData.kv.bio) || "no bio set yet — add one via lanyard's kv store";
+  previewBio.textContent = (lastPresenceData.kv && lastPresenceData.kv.bio) || "https://guns.lol/patrick2769
+
+https://exedevelopement.com/sentinel/
+
+CDE is my best friend
+
+Full-Stack Web Developer Python/FastAPI, JavaScript.
+Roblox Dev
+
+working @ [ ERROR ]";
 
   previewVisitBtn.href = "http://discord.com/users/728856632288608336";
 }
