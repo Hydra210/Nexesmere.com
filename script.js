@@ -284,7 +284,7 @@ function renderDiscordPreview(){
   // set it once via: DM the lanyard bot ".apikey", then
   // PUT https://api.lanyard.rest/v1/users/728856632288608336/kv/bio
   // with your bio text as the request body
-  previewBio.textContent = (lastPresenceData.kv && lastPresenceData.kv.bio) || "https://guns.lol/patrick2769
+  previewBio.textContent = (lastPresenceData.kv && lastPresenceData.kv.bio) || "https://guns.lol/patrick2769"
 
 https://exedevelopement.com/sentinel/
 
