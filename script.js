@@ -284,11 +284,15 @@ function renderDiscordPreview(){
   // set it once via: DM the lanyard bot ".apikey", then
   // PUT https://api.lanyard.rest/v1/users/728856632288608336/kv/bio
   // with your bio text as the request body
-previewBio.textContent = (lastPresenceData.kv && lastPresenceData.kv.bio) || `https://guns.lol/patrick2769
+  previewBio.textContent = (lastPresenceData.kv && lastPresenceData.kv.bio) || `https://guns.lol/patrick2769
+
 https://exedevelopement.com/sentinel/
+
 CDE is my best friend
+
 Full-Stack Web Developer Python/FastAPI, JavaScript.
 Roblox Dev
+
 working @ [ ERROR ]`;
 
   previewVisitBtn.href = "http://discord.com/users/728856632288608336";
@@ -839,14 +843,15 @@ entryGate.addEventListener("click", async () => {
   }
   await audioCtx.resume();
 
-  if (playlist.length > 0) {
-    currentTrackIndex = 0;
-    await crossfadeToTrack(0);
-    prefetchRest(0); // load the rest of the playlist in the background
-  }
-
+  // hide the gate the instant the click is handled — don't make the user
+  // stare at "CLICK TO ENTER" while the track's full blob downloads below
   entryGate.classList.add("is-hidden");
   mainCard.classList.remove("is-blurred");
+
+  if (playlist.length > 0) {
+    currentTrackIndex = 0;
+    crossfadeToTrack(0).then(() => prefetchRest(0)); // load in the background, don't block the UI on it
+  }
 
   // tells the browser this is an active playback session so it backs
   // off throttling it as hard when the tab loses focus
