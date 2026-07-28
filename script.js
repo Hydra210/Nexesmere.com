@@ -503,54 +503,16 @@ function drawStars(t){
 resizeCanvas();
 
 // ===================================================================
-// PLAYLIST — numbered tracks (track1, track2, track3...) checked in
-// order, each one independently .mp4 (video bg) or .mp3 (audio-only),
-// mixed freely in any order. loops back to track 1 after the last
-// one plays. falls back to the old unnumbered "music/track.mp4" /
-// "music/track.mp3" naming if no numbered tracks exist.
+// PLAYLIST — built straight from the TRACKS table in tracks.js.
+// Playback order = table order, loops back to the top after the
+// last entry. tracks.js must load before this file (see index.html).
 // ===================================================================
-const MAX_TRACKS = 50;
-
-// this site's render.yaml rewrites every missing path to index.html
-// (SPA-style fallback), so a plain HEAD status check would think
-// EVERY track number "exists" since Render just serves index.html
-// instead of a real 404. checking content-type instead of just the
-// status code is what filters the fakes out.
-async function fileIsRealMedia(url, expectedTypePrefix){
-  try {
-    const res = await fetch(url, { method: "HEAD" });
-    if (!res.ok) return false;
-    const ct = res.headers.get("content-type") || "";
-    return ct.startsWith(expectedTypePrefix);
-  } catch {
-    return false;
-  }
-}
-
 async function buildPlaylist(){
-  const list = [];
-  for (let i = 1; i <= MAX_TRACKS; i++){
-    const mp4Url = `music/track${i}.mp4`;
-    const mp3Url = `music/track${i}.mp3`;
-    if (await fileIsRealMedia(mp4Url, "video/")) {
-      list.push({ type: "video", url: mp4Url, blobUrl: null });
-    } else if (await fileIsRealMedia(mp3Url, "audio/")) {
-      list.push({ type: "audio", url: mp3Url, blobUrl: null });
-    } else {
-      break; // numbering stops being contiguous — playlist ends here
-    }
+  if (typeof TRACKS === "undefined" || !Array.isArray(TRACKS)) {
+    console.warn("TRACKS table not found — make sure tracks.js is loaded before script.js");
+    return [];
   }
-
-  // legacy fallback — no track1 found, check the old unnumbered names
-  if (list.length === 0) {
-    if (await fileIsRealMedia("music/track.mp4", "video/")) {
-      list.push({ type: "video", url: "music/track.mp4", blobUrl: null });
-    } else if (await fileIsRealMedia("music/track.mp3", "audio/")) {
-      list.push({ type: "audio", url: "music/track.mp3", blobUrl: null });
-    }
-  }
-
-  return list;
+  return TRACKS.map(t => ({ type: t.type, url: t.url, blobUrl: null }));
 }
 
 let playlist = [];
