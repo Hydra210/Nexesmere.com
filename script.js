@@ -777,8 +777,16 @@ async function resolveMediaSource(){
   playlist = await buildPlaylist();
 
   if (playlist.length === 0) {
-    console.warn("no tracks found in /music (checked track1.mp4/mp3 upward, plus legacy track.mp4/mp3) — entry gate will still work, just silently.");
+    console.warn("no tracks in TRACKS table (tracks.js) — entry gate will still work, just silently.");
     mediaEl = audioEl;
+  } else {
+    // buildPlaylist() itself is now instant (just reads the TRACKS
+    // table), so without this the gate flipped to "CLICK TO ENTER"
+    // before the actual video/audio had downloaded at all. waiting
+    // on preloadTrack here forces it to sit on "LOADING..." until
+    // the first track is FULLY fetched as a blob — same blob gets
+    // reused instantly on click since preloadTrack caches it.
+    await preloadTrack(playlist[0]);
   }
 
   if (entryText) entryText.textContent = "CLICK TO ENTER";
