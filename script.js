@@ -717,6 +717,13 @@ function handleEnded(e){
 }
 
 const allMediaEls = [bgVideo, bgVideo2, audioEl, audioEl2];
+
+// tracks now live on a different origin (R2), and anything routed
+// through the Web Audio graph (createMediaElementSource below) gets
+// silently muted by the browser unless the element explicitly asks
+// for CORS access. this has zero effect on same-origin files, so
+// it's safe to leave on even if you go back to local /music files.
+allMediaEls.forEach(el => { el.crossOrigin = "anonymous"; });
 allMediaEls.forEach(el => {
   el.addEventListener("timeupdate", handleTimeUpdate);
   el.addEventListener("ended", handleEnded);
