@@ -387,12 +387,8 @@ document.querySelectorAll(".js-preview-trigger").forEach(btn => {
 });
 
 // ===================================================================
-// AUDIO-REACTIVE VISUALIZER
+// PLAYBACK STATE
 // ===================================================================
-const canvas = document.getElementById("viz");
-const ctx = canvas.getContext("2d");
-const starsCanvas = document.getElementById("stars");
-const starsCtx = starsCanvas.getContext("2d");
 const audioEl = document.getElementById("bgAudio");
 const audioEl2 = document.getElementById("bgAudio2");
 const bgVideo = document.getElementById("bgVideo");
@@ -401,8 +397,7 @@ const entryGate = document.getElementById("entryGate");
 const mainCard = document.getElementById("mainCard");
 const nameParticles = document.getElementById("nameParticles");
 
-let audioCtx, analyser, dataArray;
-let audioReady = false;
+let audioReady = false; // true once playback has actually started
 let mediaEl = audioEl; // whichever element is currently the primary one playing
 
 // two overlapping "layers" (one video + one audio slot each) so we
@@ -417,92 +412,6 @@ let activeEl = null; // the element actually driving playback right now
 let crossfadeTriggered = false;
 let crossfadeStuckSince = 0; // timestamp of when crossfadeTriggered last flipped true
 const CROSSFADE_MS = 1200;
-
-// starfield state
-let stars = [];
-
-function resizeCanvas(){
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  starsCanvas.width = window.innerWidth;
-  starsCanvas.height = window.innerHeight;
-  initStars();
-}
-window.addEventListener("resize", resizeCanvas);
-
-function initStars(){
-  const w = starsCanvas.width, h = starsCanvas.height;
-  const count = Math.round((w * h) / 9000); // scales with screen size
-  stars = [];
-  for (let i = 0; i < count; i++){
-    const roll = Math.random();
-    let hue = "white";
-    if (roll < 0.16) hue = "blue";
-    else if (roll < 0.22) hue = "warm";
-
-    stars.push({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      r: Math.random() * 1.3 + 0.4,
-      baseAlpha: Math.random() * 0.5 + 0.35,
-      phase: Math.random() * Math.PI * 2,
-      speed: Math.random() * 0.8 + 0.3,
-      driftX: (Math.random() - 0.5) * 0.04,
-      driftY: (Math.random() - 0.5) * 0.04,
-      hue
-    });
-  }
-}
-
-// pre-rendered glow sprites — drawing these with drawImage is WAY
-// cheaper than recomputing ctx.shadowBlur per star per frame, which
-// was quietly wrecking your GPU process for no visual upside
-const GLOW_SIZE = 24;
-function makeGlowSprite(rgb){
-  const c = document.createElement("canvas");
-  c.width = GLOW_SIZE;
-  c.height = GLOW_SIZE;
-  const g = c.getContext("2d");
-  const grad = g.createRadialGradient(GLOW_SIZE/2, GLOW_SIZE/2, 0, GLOW_SIZE/2, GLOW_SIZE/2, GLOW_SIZE/2);
-  grad.addColorStop(0, `rgba(${rgb},1)`);
-  grad.addColorStop(1, `rgba(${rgb},0)`);
-  g.fillStyle = grad;
-  g.fillRect(0, 0, GLOW_SIZE, GLOW_SIZE);
-  return c;
-}
-const glowSprites = {
-  white: makeGlowSprite("242,242,237"),
-  blue: makeGlowSprite("150,190,255"),
-  warm: makeGlowSprite("255,225,195")
-};
-
-function drawStars(t){
-  const w = starsCanvas.width, h = starsCanvas.height;
-  starsCtx.clearRect(0, 0, w, h);
-
-  for (const s of stars){
-    const twinkle = Math.sin(t * 0.001 * s.speed + s.phase);
-    const alpha = Math.max(0, Math.min(1, s.baseAlpha + twinkle * 0.3));
-
-    const sprite = glowSprites[s.hue] || glowSprites.white;
-    const size = s.r * 9;
-    starsCtx.globalAlpha = alpha;
-    starsCtx.drawImage(sprite, s.x - size / 2, s.y - size / 2, size, size);
-
-    // slow ambient drift, wraps around edges
-    s.x += s.driftX;
-    s.y += s.driftY;
-    if (s.x < 0) s.x = w;
-    if (s.x > w) s.x = 0;
-    if (s.y < 0) s.y = h;
-    if (s.y > h) s.y = 0;
-  }
-  starsCtx.globalAlpha = 1;
-}
-
-resizeCanvas();
-
-// ===================================================================
 // PLAYLIST — built straight from the TRACKS table in tracks.js.
 // Playback order = table order, loops back to the top after the
 // last entry. tracks.js must load before this file (see index.html).
@@ -718,12 +627,6 @@ function handleEnded(e){
 
 const allMediaEls = [bgVideo, bgVideo2, audioEl, audioEl2];
 
-// tracks now live on a different origin (R2), and anything routed
-// through the Web Audio graph (createMediaElementSource below) gets
-// silently muted by the browser unless the element explicitly asks
-// for CORS access. this has zero effect on same-origin files, so
-// it's safe to leave on even if you go back to local /music files.
-allMediaEls.forEach(el => { el.crossOrigin = "anonymous"; });
 allMediaEls.forEach(el => {
   el.addEventListener("timeupdate", handleTimeUpdate);
   el.addEventListener("ended", handleEnded);
@@ -793,32 +696,10 @@ async function resolveMediaSource(){
 }
 const mediaReady = resolveMediaSource();
 
-function setupAudioGraph(){
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 256;
-
-  // all 4 elements get wired into the graph up front, since a
-  // MediaElementSourceNode can only ever be created ONCE per element —
-  // this lets the crossfade freely swap between layers/types later
-  // without rebuilding the graph every time
-  allMediaEls.forEach(el => {
-    const source = audioCtx.createMediaElementSource(el);
-    source.connect(analyser);
-  });
-
-  analyser.connect(audioCtx.destination);
-  dataArray = new Uint8Array(analyser.frequencyBinCount);
-}
-
 entryGate.addEventListener("click", async () => {
-  await mediaReady; // make sure the playlist is built before wiring the graph
+  await mediaReady; // make sure the playlist is built before starting playback
 
-  if (!audioReady) {
-    setupAudioGraph();
-    audioReady = true;
-  }
-  await audioCtx.resume();
+  audioReady = true;
 
   // hide the gate the instant the click is handled — don't make the user
   // stare at "CLICK TO ENTER" while the track's full blob downloads below
@@ -837,80 +718,13 @@ entryGate.addEventListener("click", async () => {
   }
 }, { once: true });
 
-// tab-switch cutout fix — browsers auto-suspend the AudioContext when
-// the tab loses focus/visibility to save power, and don't always
-// resume it cleanly on their own. force it back on when we return.
+// tab-switch cutout fix — browsers can suspend/throttle playback when
+// the tab loses focus and don't always resume it cleanly on their own.
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && audioReady && audioCtx && audioCtx.state === "suspended") {
-    audioCtx.resume();
-  }
   if (!document.hidden && mediaEl && mediaEl.paused && audioReady) {
     mediaEl.play().catch(() => {});
   }
 });
-
-function drawIdle(t){
-  // ambient idle motion before audio is enabled — sparse flat baseline
-  const w = canvas.width, h = canvas.height, mid = h / 2;
-  ctx.clearRect(0, 0, w, h);
-  ctx.strokeStyle = "rgba(242,242,237,0.15)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  const bars = 64;
-  const gap = w / bars;
-  for (let i = 0; i < bars; i++){
-    const x = i * gap;
-    const wave = Math.sin(i * 0.4 + t * 0.001) * 6;
-    ctx.moveTo(x, mid - wave);
-    ctx.lineTo(x, mid + wave);
-  }
-  ctx.stroke();
-}
-
-function drawReactive(){
-  analyser.getByteFrequencyData(dataArray);
-  const w = canvas.width, h = canvas.height, mid = h / 2;
-  ctx.clearRect(0, 0, w, h);
-
-  const bars = dataArray.length;
-  const gap = w / bars;
-
-  ctx.lineCap = "square";
-
-  for (let i = 0; i < bars; i++){
-    const v = dataArray[i] / 255;
-    const barH = v * (h * 0.42);
-    const x = i * gap;
-
-    const alpha = 0.18 + v * 0.7;
-    ctx.strokeStyle = `rgba(242,242,237,${alpha})`;
-    ctx.lineWidth = Math.max(1.5, gap * 0.55);
-
-    ctx.beginPath();
-    ctx.moveTo(x, mid - barH);
-    ctx.lineTo(x, mid + barH);
-    ctx.stroke();
-  }
-
-  // hairline center axis — "tuff" straight edge through the noise
-  ctx.strokeStyle = "rgba(242,242,237,0.25)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0, mid);
-  ctx.lineTo(w, mid);
-  ctx.stroke();
-}
-
-function loop(t){
-  drawStars(t);
-  if (audioReady && !mediaEl.paused) {
-    drawReactive();
-  } else {
-    drawIdle(t);
-  }
-  requestAnimationFrame(loop);
-}
-requestAnimationFrame(loop);
 
 // ===================================================================
 // NAME PARTICLES — small glowing dots drifting up around the display name

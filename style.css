@@ -29,43 +29,18 @@ html,body{
 
 .bg-video{
   position:fixed;
-  top:50%;
-  left:50%;
-  /* rendered small on purpose — filter cost scales with pixel count,
-     so blurring a small box and scaling the RESULT up is way cheaper
-     than blurring the video at full viewport size every frame. this
-     is what was choking under load (e.g. screen recording competing
-     for the GPU) even though nothing else on the page was struggling. */
-  width:34%;
-  height:34%;
-  object-fit:cover;
-  z-index:var(--z-backdrop);
-  /* blur reduced to compensate for the ~3.3x upscale below, so the
-     visual blur amount ends up looking the same as before (24px) */
-  filter:blur(7px) brightness(.5) saturate(1.1);
-  transform:translate(-50%,-50%) scale(3.3); /* scale also covers the blurred-edge clipping, same as the old edge-hiding trick */
-  will-change:transform, opacity;
-  opacity:0; /* JS crossfades this between 0 and 1 — no more hard on/off */
-}
-
-.stars-canvas{
-  position:fixed;
   inset:0;
   width:100%;
   height:100%;
-  z-index:var(--z-ambient);
-  display:block;
-}
-
-.viz-canvas{
-  position:fixed;
-  inset:-4%;
-  width:108%;
-  height:108%;
+  object-fit:cover;
   z-index:var(--z-backdrop);
-  display:block;
-  filter:blur(9px) brightness(1.15);
-  opacity:.8;
+  /* no live filter anymore — blur/brightness/saturate are baked into
+     the video file itself now (see README note on track encoding).
+     this is what was actually choking under load: a real-time full-
+     screen GPU blur running every frame, fighting your screen
+     recorder for the same GPU. baking it in removes that cost
+     completely — this is now just a plain video element. */
+  opacity:0; /* JS crossfades this between 0 and 1 — no more hard on/off */
 }
 
 .grain{
