@@ -604,6 +604,23 @@ async function crossfadeToTrack(i){
 
 const nowPlayingFill = document.getElementById("nowPlayingFill");
 
+// timeupdate can fire far more often than the screen actually
+// repaints (some browsers fire it dozens of times/sec) — under CPU
+// stress that's extra style-write work stacking up on top of video
+// decode for no visual benefit. this gates the actual DOM write to
+// once per rendered frame instead of once per event.
+let fillWriteQueued = false;
+function writeNowPlayingFill(el){
+  if (fillWriteQueued) return;
+  fillWriteQueued = true;
+  requestAnimationFrame(() => {
+    fillWriteQueued = false;
+    if (el.duration && isFinite(el.duration) && nowPlayingFill) {
+      nowPlayingFill.style.width = `${clamp01(el.currentTime / el.duration) * 100}%`;
+    }
+  });
+}
+
 // starts the crossfade to the next track slightly BEFORE the current
 // one physically ends, so the transition is gapless instead of
 // waiting for silence then fading in
@@ -611,9 +628,7 @@ function handleTimeUpdate(e){
   const el = e.target;
   if (el !== activeEl) return;
 
-  if (el.duration && isFinite(el.duration) && nowPlayingFill) {
-    nowPlayingFill.style.width = `${clamp01(el.currentTime / el.duration) * 100}%`;
-  }
+  writeNowPlayingFill(el);
 
   if (crossfadeTriggered) return;
   if (!el.duration || !isFinite(el.duration)) return;

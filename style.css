@@ -54,6 +54,15 @@ body::before{
      recorder for the same GPU. baking it in removes that cost
      completely — this is now just a plain video element. */
   opacity:0; /* JS crossfades this between 0 and 1 — no more hard on/off */
+
+  /* promotes the video to its own GPU compositor layer so decode +
+     opacity crossfading don't get stuck fighting the rest of the page
+     for main-thread time under load. translateZ(0) is the classic
+     layer-promotion hack; backface-visibility avoids a Safari flicker
+     that trick can cause. */
+  will-change:opacity;
+  transform:translateZ(0);
+  backface-visibility:hidden;
 }
 
 .grain{
