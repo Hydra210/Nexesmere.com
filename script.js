@@ -598,12 +598,20 @@ async function crossfadeToTrack(i){
   requestAnimationFrame(step);
 }
 
+const nowPlayingFill = document.getElementById("nowPlayingFill");
+
 // starts the crossfade to the next track slightly BEFORE the current
 // one physically ends, so the transition is gapless instead of
 // waiting for silence then fading in
 function handleTimeUpdate(e){
   const el = e.target;
-  if (el !== activeEl || crossfadeTriggered) return;
+  if (el !== activeEl) return;
+
+  if (el.duration && isFinite(el.duration) && nowPlayingFill) {
+    nowPlayingFill.style.width = `${clamp01(el.currentTime / el.duration) * 100}%`;
+  }
+
+  if (crossfadeTriggered) return;
   if (!el.duration || !isFinite(el.duration)) return;
   const remaining = el.duration - el.currentTime;
   if (remaining <= CROSSFADE_MS / 1000) {
@@ -760,6 +768,65 @@ function spawnNameParticle(){
 setInterval(spawnNameParticle, 140);
 // occasional double-spawn so it never feels too sparse
 setInterval(() => { if (Math.random() < 0.5) spawnNameParticle(); }, 220);
+
+// ===================================================================
+// CARD TILT — follows the cursor. perspective() lives right inside
+// this element's own transform, so it doesn't need a `perspective`
+// property on a parent (which would've messed with the fixed-position
+// video/canvas layers elsewhere on the page). CSS transition on the
+// card handles the smoothing, so no extra rAF loop needed here either.
+// ===================================================================
+const canTilt = window.matchMedia("(pointer: fine)").matches && !reducedMotion;
+
+if (canTilt && mainCard) {
+  const MAX_TILT_DEG = 6;
+
+  document.addEventListener("mousemove", (e) => {
+    const r = mainCard.getBoundingClientRect();
+    const rawX = ((e.clientX - r.left) / r.width) * 2 - 1;  // -1..1 across the card, unbounded outside it
+    const rawY = ((e.clientY - r.top) / r.height) * 2 - 1;
+    const nx = Math.max(-1, Math.min(1, rawX));
+    const ny = Math.max(-1, Math.min(1, rawY));
+    const rotY = nx * MAX_TILT_DEG;
+    const rotX = -ny * MAX_TILT_DEG;
+    mainCard.style.transform =
+      `translateY(-50%) perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+  });
+
+  document.addEventListener("mouseleave", () => {
+    mainCard.style.transform = "translateY(-50%)";
+  });
+}
+
+// ===================================================================
+// KONAMI CODE EASTER EGG — up up down down left right left right b a
+// ===================================================================
+const konamiSequence = ["ArrowUp","ArrowUp","ArrowDown","ArrowDown","ArrowLeft","ArrowRight","ArrowLeft","ArrowRight","b","a"];
+let konamiProgress = 0;
+
+document.addEventListener("keydown", (e) => {
+  const expected = konamiSequence[konamiProgress];
+  const matched = e.key === expected || e.key.toLowerCase() === expected;
+
+  if (matched) {
+    konamiProgress++;
+    if (konamiProgress === konamiSequence.length) {
+      konamiProgress = 0;
+      triggerKonamiEasterEgg();
+    }
+  } else {
+    konamiProgress = (e.key === konamiSequence[0]) ? 1 : 0;
+  }
+});
+
+function triggerKonamiEasterEgg(){
+  if (reducedMotion) return;
+  for (let i = 0; i < 40; i++){
+    setTimeout(spawnNameParticle, i * 20);
+  }
+  document.body.classList.add("konami-flash");
+  setTimeout(() => document.body.classList.remove("konami-flash"), 1200);
+}
 
 
 

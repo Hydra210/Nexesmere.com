@@ -139,10 +139,21 @@ body::before{
   border:1px solid var(--line);
   border-radius:28px;
   backdrop-filter:blur(6px);
-  transition:filter var(--transition-slow) ease;
+  transition:filter var(--transition-slow) ease, transform .12s ease-out;
 }
 .card.is-blurred{
   filter:blur(14px);
+}
+
+/* one-shot flash for the konami easter egg — NOT continuous, only
+   runs for ~1.2s when triggered, so it costs nothing at rest */
+@keyframes konamiFlash{
+  0%{ filter:none; }
+  40%{ filter:hue-rotate(180deg) saturate(2); }
+  100%{ filter:none; }
+}
+.konami-flash{
+  animation:konamiFlash 1.2s ease;
 }
 
 .avatar-wrap{
@@ -312,6 +323,25 @@ body::before{
   letter-spacing:.14em;
   text-transform:uppercase;
   color:var(--mid);
+}
+
+.now-playing-bar{
+  width:100%;
+  height:3px;
+  margin-top:12px;
+  background:rgba(242,242,237,.08);
+  border-radius:2px;
+  overflow:hidden;
+}
+.now-playing-fill{
+  height:100%;
+  width:0%;
+  background:var(--fg);
+  border-radius:2px;
+  /* width updates on every timeupdate tick (a few times/sec) — the
+     transition just smooths those steps into a continuous-looking
+     fill instead of visibly jumping */
+  transition:width .25s linear;
 }
 
 .divider{
@@ -520,6 +550,42 @@ button.social-btn{
 }
 
 .preview-visit-btn:hover{
+  background:rgba(242,242,237,.12);
+  transform:translateY(-2px);
+}
+
+/* ---------- projects row ---------- */
+.projects-label{
+  font-size:9px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--mid);
+  margin-bottom:10px;
+  width:100%;
+  text-align:left;
+}
+
+.projects-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  width:100%;
+}
+
+.project-chip{
+  padding:8px 14px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  letter-spacing:.05em;
+  color:var(--fg);
+  background:rgba(242,242,237,.05);
+  border:1px solid var(--line);
+  border-radius:20px;
+  text-decoration:none;
+  transition:background var(--transition-fast) ease, transform var(--transition-fast) ease;
+}
+
+.project-chip:hover{
   background:rgba(242,242,237,.12);
   transform:translateY(-2px);
 }
