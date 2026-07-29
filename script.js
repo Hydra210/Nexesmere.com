@@ -427,9 +427,13 @@ async function buildPlaylist(){
 let playlist = [];
 let currentTrackIndex = 0;
 
-// fully downloads one track into a blob before it plays — same deal
-// as before, no half-buffered streaming stutter
+// video tracks stream straight off their URL (the browser handles
+// range requests, so playback can start before the whole file is
+// down) — only audio tracks still get fully blob-buffered first,
+// since that's what kills the half-buffered stutter on those
 async function preloadTrack(track){
+  if (track.type === "video") return track.url;
+
   if (track.blobUrl) return track.blobUrl;
   try {
     const res = await fetch(track.url);
