@@ -27,6 +27,19 @@ html,body{
   font-family:'JetBrains Mono',monospace;
 }
 
+/* darkens the bg video — same trick as a lot of sites use: a static
+   radial gradient sitting above the video, nothing animated, no
+   filter. basically free to render compared to actually lowering
+   the video's own brightness dynamically. */
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:var(--z-ambient);
+  pointer-events:none;
+  background:radial-gradient(circle at top, rgba(4,4,4,.45), rgba(4,4,4,.85));
+}
+
 .bg-video{
   position:fixed;
   inset:0;
