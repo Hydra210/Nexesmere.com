@@ -1,25 +1,25 @@
-// ===================================================================
-// CONFIG
-// ===================================================================
 const DISCORD_ID = "728856632288608336";
 
-// ===================================================================
-// CUSTOM CURSOR — opaque dot with a black stroke that smoothly turns
-// white when hovering anything clickable. self-contained (builds its
-// own element), only runs on fine-pointer devices since touch screens
-// have no cursor to replace.
-// ===================================================================
+// Single shared pointer tracker: one mousemove listener, one rAF loop.
+// Both the custom cursor and the card tilt read from this instead of each
+// running their own listener + doing DOM writes synchronously per event.
+const pointerState = { x: 0, y: 0, has: false };
+let pointerRafQueued = false;
+
 if (window.matchMedia("(pointer: fine)").matches) {
   const cursorEl = document.createElement("div");
   cursorEl.className = "custom-cursor";
   cursorEl.setAttribute("aria-hidden", "true");
   document.body.appendChild(cursorEl);
 
-  window.addEventListener("mousemove", (e) => {
-    cursorEl.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
-  });
-
   const CURSOR_CLICKABLE = "a, button, input, select, textarea, label, [role='button'], [onclick], .social-btn, .entry-gate";
+
+  window.addEventListener("mousemove", (e) => {
+    pointerState.x = e.clientX;
+    pointerState.y = e.clientY;
+    pointerState.has = true;
+    queuePointerFrame();
+  }, { passive: true });
 
   document.addEventListener("mouseover", (e) => {
     if (e.target.closest(CURSOR_CLICKABLE)) cursorEl.classList.add("is-hover");
@@ -27,12 +27,24 @@ if (window.matchMedia("(pointer: fine)").matches) {
   document.addEventListener("mouseout", (e) => {
     if (e.target.closest(CURSOR_CLICKABLE)) cursorEl.classList.remove("is-hover");
   });
+
+  window.__cursorEl = cursorEl;
 }
 
-// ===================================================================
-// ICON FALLBACKS — hides an icon gracefully if the asset is missing,
-// instead of leaving a broken-image box on the page
-// ===================================================================
+function queuePointerFrame(){
+  if (pointerRafQueued) return;
+  pointerRafQueued = true;
+  requestAnimationFrame(() => {
+    pointerRafQueued = false;
+    if (!pointerState.has) return;
+
+    if (window.__cursorEl) {
+      window.__cursorEl.style.transform = `translate(${pointerState.x}px, ${pointerState.y}px) translate(-50%, -50%)`;
+    }
+    if (typeof updateTilt === "function") updateTilt(pointerState.x, pointerState.y);
+  });
+}
+
 document.querySelectorAll(".js-dnd-icon").forEach(el => {
   el.addEventListener("error", () => {
     el.hidden = true;
@@ -48,11 +60,6 @@ document.querySelectorAll(".js-social-icon").forEach(el => {
   });
 });
 
-// ===================================================================
-// MY TIME — hardcoded to YOUR timezone, not the visitor's. shows
-// what time it actually is for you regardless of who's looking or
-// where they're at. change the timeZone string below if you move.
-// ===================================================================
 const MY_TIMEZONE = "America/New_York";
 
 function tickMyTime(){
@@ -68,10 +75,6 @@ function tickMyTime(){
 setInterval(tickMyTime, 1000);
 tickMyTime();
 
-// ===================================================================
-// LANYARD — live discord presence over websocket
-// docs: https://github.com/Phineas/lanyard
-// ===================================================================
 let heartbeatInterval = null;
 
 function connectLanyard(){
@@ -81,7 +84,7 @@ function connectLanyard(){
     const msg = JSON.parse(event.data);
 
     switch(msg.op){
-      case 1: { // HELLO — start heartbeat, then subscribe
+      case 1: {
         const interval = msg.d.heartbeat_interval;
         if (heartbeatInterval) clearInterval(heartbeatInterval);
         heartbeatInterval = setInterval(() => {
@@ -94,7 +97,7 @@ function connectLanyard(){
         }));
         break;
       }
-      case 0: { // EVENT — presence data
+      case 0: {
         if (msg.t === "INIT_STATE" || msg.t === "PRESENCE_UPDATE") {
           renderPresence(msg.d);
         }
@@ -112,7 +115,7 @@ function connectLanyard(){
 }
 
 function renderPresence(data){
-  lastPresenceData = data; // keep the latest payload around for the discord preview panel
+  lastPresenceData = data;
 
   const user = data.discord_user;
   const displayNameEl = document.getElementById("displayName");
@@ -124,7 +127,6 @@ function renderPresence(data){
   const statusText = document.getElementById("statusText");
   const feed = document.getElementById("activityFeed");
 
-  // identity — global_name is the "display name", username is the handle
   displayNameEl.textContent = user.global_name || user.username || "unknown";
   usernameEl.textContent = "@" + (user.username || "unknown");
 
@@ -133,7 +135,6 @@ function renderPresence(data){
     ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${ext}?size=256`
     : `https://cdn.discordapp.com/embed/avatars/0.png`;
 
-  // avatar decoration (if discord account has one equipped)
   if (user.avatar_decoration_data && user.avatar_decoration_data.asset) {
     decoEl.src = `https://cdn.discordapp.com/avatar-decoration-presets/${user.avatar_decoration_data.asset}.png`;
     decoEl.hidden = false;
@@ -141,20 +142,17 @@ function renderPresence(data){
     decoEl.hidden = true;
   }
 
-  // status dot
   statusDot.dataset.status = data.discord_status || "offline";
 
   const showDndIcon = data.discord_status === "dnd" && dndIcon.dataset.broken !== "1";
   dndIcon.hidden = !showDndIcon;
   statusDot.style.visibility = showDndIcon ? "hidden" : "visible";
 
-  // custom status text (activity type 4)
   const customStatus = (data.activities || []).find(a => a.type === 4);
   statusText.textContent = customStatus && customStatus.state
     ? customStatus.state
     : (data.discord_status || "offline").toUpperCase();
 
-  // activity feed
   feed.innerHTML = "";
 
   if (data.listening_to_spotify && data.spotify) {
@@ -173,8 +171,6 @@ function renderPresence(data){
     feed.appendChild(buildRow(label, detail));
   });
 
-  // keeps the discord preview panel live if it's already open when a new
-  // presence update comes in, instead of freezing on whatever it had first
   if (openPreviewPlatform === "discord") renderDiscordPreview();
 }
 
@@ -192,26 +188,14 @@ function buildRow(eyebrow, detail){
   return row;
 }
 
-let lastPresenceData = null; // most recent lanyard payload — declared before connectLanyard() runs
-let openPreviewPlatform = null; // which preview panel is currently open, if any
+let lastPresenceData = null;
+let openPreviewPlatform = null; 
 
 connectLanyard();
 
-// ===================================================================
-// SOCIAL PREVIEWS — dropdown panel under the social row showing
-// profile info per platform. discord is fully live off the lanyard
-// payload above. roblox is fetched live from our own backend (see
-// server.py) which proxies roblox's api server-side, since browsers
-// can't call roblox directly (their api never sends back
-// Access-Control-Allow-Origin, so the request gets blocked by CORS
-// before the response reaches JS — a server has no such restriction).
-// instagram is still filled in by hand below since there's no api at
-// all for looking up an arbitrary profile without owning the account.
-// update PROFILE_DATA.instagram whenever that changes.
-// ===================================================================
 const PROFILE_DATA = {
   instagram: {
-    pfp: "icons/preview-instagram.jpg", // drop a saved copy of your pfp here — the CDN link in the html you sent is signed and expires
+    pfp: "icons/preview-instagram.jpg",
     username: "pat2769_",
     displayName: "PAT😝",
     posts: 38,
@@ -222,8 +206,7 @@ const PROFILE_DATA = {
 
 const ROBLOX_USER_ID = "1230783705";
 const ROBLOX_PROFILE_URL = "https://www.roblox.com/users/1230783705/profile";
-let robloxProfileCache = null; // avoids re-hitting our own backend every time the panel is reopened
-
+let robloxProfileCache = null;
 const PLACEHOLDER_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' fill='%23232320'/%3E%3Ccircle cx='24' cy='19' r='9' fill='%237a7a76'/%3E%3Cellipse cx='24' cy='42' rx='16' ry='11' fill='%237a7a76'/%3E%3C/svg%3E";
 
 const previewPanel = document.getElementById("socialPreviewPanel");
@@ -272,18 +255,12 @@ function renderDiscordPreview(){
   previewStats.innerHTML = "";
   previewStats.appendChild(buildPreviewStat("Status", (lastPresenceData.discord_status || "offline").toUpperCase()));
 
-  // "visibility" — which client(s) you're actively signed in on, since
-  // discord doesn't expose a real privacy toggle through the public api
   const platforms = [];
   if (lastPresenceData.active_on_discord_desktop) platforms.push("Desktop");
   if (lastPresenceData.active_on_discord_mobile) platforms.push("Mobile");
   if (lastPresenceData.active_on_discord_web) platforms.push("Web");
   previewStats.appendChild(buildPreviewStat("Visibility", platforms.length ? platforms.join(", ") : "Offline"));
 
-  // bio comes from lanyard's kv store, not the presence payload itself —
-  // set it once via: DM the lanyard bot ".apikey", then
-  // PUT https://api.lanyard.rest/v1/users/728856632288608336/kv/bio
-  // with your bio text as the request body
   previewBio.textContent = (lastPresenceData.kv && lastPresenceData.kv.bio) || `https://guns.lol/patrick2769
 
 https://exedevelopement.com/sentinel/
@@ -340,7 +317,7 @@ async function renderRobloxPreview(){
   } catch (err) {
     console.warn("roblox preview fetch failed:", err);
     previewDisplayName.textContent = "couldn't load";
-    previewBio.textContent = "roblox lookup failed — try again in a bit";
+    previewBio.textContent = "roblox lookup failed. try again in a bit";
   }
 }
 
@@ -386,9 +363,6 @@ document.querySelectorAll(".js-preview-trigger").forEach(btn => {
   });
 });
 
-// ===================================================================
-// PLAYBACK STATE
-// ===================================================================
 const audioEl = document.getElementById("bgAudio");
 const audioEl2 = document.getElementById("bgAudio2");
 const bgVideo = document.getElementById("bgVideo");
@@ -397,28 +371,22 @@ const entryGate = document.getElementById("entryGate");
 const mainCard = document.getElementById("mainCard");
 const nameParticles = document.getElementById("nameParticles");
 
-let audioReady = false; // true once playback has actually started
-let mediaEl = audioEl; // whichever element is currently the primary one playing
+let audioReady = false;
+let mediaEl = audioEl;
 
-// two overlapping "layers" (one video + one audio slot each) so we
-// can play the next track underneath the current one and crossfade
-// between them instead of hard-cutting
 const layers = [
   { video: bgVideo, audio: audioEl },
   { video: bgVideo2, audio: audioEl2 }
 ];
 let activeLayerIndex = 0;
-let activeEl = null; // the element actually driving playback right now
+let activeEl = null;
 let crossfadeTriggered = false;
-let crossfadeStuckSince = 0; // timestamp of when crossfadeTriggered last flipped true
+let crossfadeStuckSince = 0;
 const CROSSFADE_MS = 1200;
-// PLAYLIST — built straight from the TRACKS table in tracks.js.
-// Playback order = table order, loops back to the top after the
-// last entry. tracks.js must load before this file (see index.html).
-// ===================================================================
+
 async function buildPlaylist(){
   if (typeof TRACKS === "undefined" || !Array.isArray(TRACKS)) {
-    console.warn("TRACKS table not found — make sure tracks.js is loaded before script.js");
+    console.warn("TRACKS table not found. make sure tracks.js is loaded before script.js");
     return [];
   }
   return TRACKS.map(t => ({ type: t.type, url: t.url, blobUrl: null }));
@@ -427,10 +395,6 @@ async function buildPlaylist(){
 let playlist = [];
 let currentTrackIndex = 0;
 
-// video tracks stream straight off their URL (the browser handles
-// range requests, so playback can start before the whole file is
-// down) — only audio tracks still get fully blob-buffered first,
-// since that's what kills the half-buffered stutter on those
 async function preloadTrack(track){
   if (track.type === "video") return track.url;
 
@@ -440,14 +404,11 @@ async function preloadTrack(track){
     const blob = await res.blob();
     track.blobUrl = URL.createObjectURL(blob);
   } catch (err) {
-    console.warn("blob preload failed for", track.url, "— falling back to streamed src:", err);
+    console.warn("blob preload failed for", track.url, "Falling back to streamed src:", err);
   }
   return track.blobUrl || track.url;
 }
 
-// quietly preloads everything else in the background once one track
-// is playing, so switching tracks is instant instead of buffering
-// mid-playlist
 function prefetchRest(fromIndex){
   for (let i = 0; i < playlist.length; i++){
     if (i === fromIndex) continue;
@@ -455,13 +416,6 @@ function prefetchRest(fromIndex){
   }
 }
 
-// classic browser bug — some files loaded from a blob: URL report
-// .duration as Infinity forever instead of the real length, since
-// blob URLs skip the normal metadata negotiation a streamed URL gets.
-// the fix is a known trick: seek to a huge timestamp once, which
-// forces the browser to actually compute the real duration, then
-// snap back to 0. without this, our "fade before it ends" logic has
-// no way to know when the track is about to end and just hangs.
 function timeoutPromise(ms){
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -470,9 +424,7 @@ async function ensureRealDuration(el){
   if (isFinite(el.duration) && el.duration > 0) return;
 
   if (el.readyState === 0) {
-    // race against a timeout — some browsers/files just never fire
-    // loadedmetadata, and without this the whole crossfade (and
-    // therefore the entire playlist) hangs forever waiting on it
+
     await Promise.race([
       new Promise(resolve => {
         el.addEventListener("loadedmetadata", resolve, { once: true });
@@ -503,15 +455,10 @@ async function ensureRealDuration(el){
   ]);
 }
 
-// hard clamp so a stray float rounding error can NEVER throw
-// IndexSizeError on .volume again, no matter what causes it
 function clamp01(v){
   return Math.max(0, Math.min(1, v));
 }
 
-// plays a track with no fade — only used when there's just ONE track
-// in the whole playlist, since native `loop` is smoother and cheaper
-// than fading a track into itself every time it repeats
 async function playSingleTrackLoop(track){
   const isVideo = track.type === "video";
   const target = isVideo ? bgVideo : audioEl;
@@ -532,13 +479,10 @@ async function playSingleTrackLoop(track){
   activeEl = target;
   activeLayerIndex = 0;
   mediaEl = target;
-  crossfadeTriggered = false; // nothing fading — safe to watch again immediately
+  crossfadeTriggered = false;
   target.play().catch(() => {});
 }
 
-// the real crossfade — starts the next track on the OTHER layer at
-// zero volume/opacity, ramps it up while ramping the current one
-// down over CROSSFADE_MS, works for any video<->audio combo
 async function crossfadeToTrack(i){
   const track = playlist[i];
   if (!track) return;
@@ -561,7 +505,7 @@ async function crossfadeToTrack(i){
   newEl.src = src;
   newEl.currentTime = 0;
   newEl.muted = false;
-  newEl.loop = false; // looping is handled by the playlist cycling itself now
+  newEl.loop = false;
   newEl.volume = prevEl ? 0 : 0.5;
   await ensureRealDuration(newEl);
   if (newEl.tagName === "VIDEO") newEl.style.opacity = prevEl ? 0 : 1;
@@ -572,16 +516,11 @@ async function crossfadeToTrack(i){
   mediaEl = newEl;
 
   if (!prevEl) {
-    crossfadeTriggered = false; // no old track to fade — this crossfade is instantly done
+    crossfadeTriggered = false;
     return;
   }
 
-  // NOTE: crossfadeTriggered stays TRUE for the entire fade animation
-  // below, not just the track-swap above — clearing it early was the
-  // actual bug. it let the watchdog think nothing was in-flight while
-  // this fade was still running, so it fired a SECOND overlapping
-  // crossfade on top of this one, and the two fights over .volume
-  // sent it negative and crashed the whole thing.
+
   const start = performance.now();
   function step(now){
     const t = Math.min(1, Math.max(0, (now - start) / CROSSFADE_MS));
@@ -596,7 +535,7 @@ async function crossfadeToTrack(i){
       prevEl.pause();
       prevEl.currentTime = 0;
       if (prevEl.tagName === "VIDEO") prevEl.style.opacity = 0;
-      crossfadeTriggered = false; // fade animation is ACTUALLY done now
+      crossfadeTriggered = false;
     }
   }
   requestAnimationFrame(step);
@@ -604,11 +543,6 @@ async function crossfadeToTrack(i){
 
 const nowPlayingFill = document.getElementById("nowPlayingFill");
 
-// timeupdate can fire far more often than the screen actually
-// repaints (some browsers fire it dozens of times/sec) — under CPU
-// stress that's extra style-write work stacking up on top of video
-// decode for no visual benefit. this gates the actual DOM write to
-// once per rendered frame instead of once per event.
 let fillWriteQueued = false;
 function writeNowPlayingFill(el){
   if (fillWriteQueued) return;
@@ -621,9 +555,6 @@ function writeNowPlayingFill(el){
   });
 }
 
-// starts the crossfade to the next track slightly BEFORE the current
-// one physically ends, so the transition is gapless instead of
-// waiting for silence then fading in
 function handleTimeUpdate(e){
   const el = e.target;
   if (el !== activeEl) return;
@@ -641,8 +572,6 @@ function handleTimeUpdate(e){
   }
 }
 
-// fallback in case timeupdate granularity ever misses the window —
-// makes sure the playlist never just dead-stops
 function handleEnded(e){
   const el = e.target;
   if (el !== activeEl || crossfadeTriggered) return;
@@ -657,25 +586,18 @@ const allMediaEls = [bgVideo, bgVideo2, audioEl, audioEl2];
 allMediaEls.forEach(el => {
   el.addEventListener("timeupdate", handleTimeUpdate);
   el.addEventListener("ended", handleEnded);
-  // stutter mitigation — force a reload if the active source stalls
+
   el.addEventListener("stalled", () => { if (el === activeEl) el.load(); });
 });
 
-// watchdog — if playback ever straight-up freezes for whatever reason
-// (a stuck decode, another blob quirk, whatever) and currentTime just
-// isn't moving, force it to the next track instead of dying silently
 let lastWatchdogTime = -1;
 setInterval(() => {
   if (!activeEl || playlist.length <= 1) return;
 
   if (crossfadeTriggered) {
-    // a crossfade is in flight — that's normal and can take a couple
-    // seconds (preload + fade), so give it room. but if it's been
-    // "in progress" way longer than that, it's genuinely hung (this
-    // used to be possible forever before ensureRealDuration got a
-    // timeout) — recover instead of leaving the site silent forever
+
     if (performance.now() - crossfadeStuckSince > 8000) {
-      console.warn("crossfade looked stuck — retrying");
+      console.warn("crossfade looked stuck. Retrying");
       crossfadeTriggered = false;
       crossfadeToTrack(currentTrackIndex);
     }
@@ -683,13 +605,8 @@ setInterval(() => {
     return;
   }
 
-  // NOTE: deliberately not skipping when activeEl.paused — a track
-  // pauses itself the instant it naturally ends, and that's exactly
-  // the freeze case this watchdog needs to catch (e.g. if a .play()
-  // call ever gets silently rejected by the browser). currentTime
-  // staying frozen across two ticks is what actually matters.
   if (activeEl.currentTime === lastWatchdogTime) {
-    console.warn("playback looked frozen — forcing advance to the next track");
+    console.warn("playback looked frozen, forcing advance to the next track");
     crossfadeTriggered = true;
     crossfadeStuckSince = performance.now();
     currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
@@ -707,15 +624,10 @@ async function resolveMediaSource(){
   playlist = await buildPlaylist();
 
   if (playlist.length === 0) {
-    console.warn("no tracks in TRACKS table (tracks.js) — entry gate will still work, just silently.");
+    console.warn("no tracks in TRACKS table (tracks.js) entry gate will still work, i hope😭.");
     mediaEl = audioEl;
   } else {
-    // buildPlaylist() itself is now instant (just reads the TRACKS
-    // table), so without this the gate flipped to "CLICK TO ENTER"
-    // before the actual video/audio had downloaded at all. waiting
-    // on preloadTrack here forces it to sit on "LOADING..." until
-    // the first track is FULLY fetched as a blob — same blob gets
-    // reused instantly on click since preloadTrack caches it.
+
     await preloadTrack(playlist[0]);
   }
 
@@ -724,42 +636,39 @@ async function resolveMediaSource(){
 const mediaReady = resolveMediaSource();
 
 entryGate.addEventListener("click", async () => {
-  await mediaReady; // make sure the playlist is built before starting playback
+  await mediaReady;
 
   audioReady = true;
 
-  // hide the gate the instant the click is handled — don't make the user
-  // stare at "CLICK TO ENTER" while the track's full blob downloads below
   entryGate.classList.add("is-hidden");
   mainCard.classList.remove("is-blurred");
 
   if (playlist.length > 0) {
     currentTrackIndex = 0;
-    crossfadeToTrack(0).then(() => prefetchRest(0)); // load in the background, don't block the UI on it
+    crossfadeToTrack(0).then(() => prefetchRest(0));
   }
 
-  // tells the browser this is an active playback session so it backs
-  // off throttling it as hard when the tab loses focus
   if ("mediaSession" in navigator) {
     navigator.mediaSession.playbackState = "playing";
   }
 }, { once: true });
 
-// tab-switch cutout fix — browsers can suspend/throttle playback when
-// the tab loses focus and don't always resume it cleanly on their own.
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden && mediaEl && mediaEl.paused && audioReady) {
     mediaEl.play().catch(() => {});
   }
 });
 
-// ===================================================================
-// NAME PARTICLES — small glowing dots drifting up around the display name
-// ===================================================================
+
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const MAX_PARTICLES_ONSCREEN = 14; // hard cap so a slow frame can't let these pile up
+let particleCount = 0;
 
 function spawnNameParticle(){
   if (reducedMotion) return;
+  if (document.hidden) return; // don't burn CPU on a backgrounded tab
+  if (particleCount >= MAX_PARTICLES_ONSCREEN) return;
 
   const width = nameParticles.clientWidth || 200;
   const p = document.createElement("span");
@@ -775,51 +684,67 @@ function spawnNameParticle(){
   p.style.height = `${size}px`;
 
   const startX = Math.random() * width;
-  const drift = (Math.random() - 0.5) * 46; // px horizontal wander while floating up
+  const drift = (Math.random() - 0.5) * 46;
 
   p.style.left = `${startX}px`;
   p.style.setProperty("--dx", `${drift}px`);
 
   nameParticles.appendChild(p);
-  p.addEventListener("animationend", () => p.remove());
+  particleCount++;
+  p.addEventListener("animationend", () => { p.remove(); particleCount--; }, { once: true });
 }
 
-setInterval(spawnNameParticle, 140);
-// occasional double-spawn so it never feels too sparse
-setInterval(() => { if (Math.random() < 0.5) spawnNameParticle(); }, 220);
+// One interval instead of two overlapping ones. ~1 particle every ~250ms on
+// average (was effectively ~1 every ~90ms combined before) — still reads as
+// a steady sparkle, but far less DOM churn and paint work over time.
+let particleTimer = setInterval(spawnNameParticle, 250);
 
-// ===================================================================
-// CARD TILT — follows the cursor. perspective() lives right inside
-// this element's own transform, so it doesn't need a `perspective`
-// property on a parent (which would've messed with the fixed-position
-// video/canvas layers elsewhere on the page). CSS transition on the
-// card handles the smoothing, so no extra rAF loop needed here either.
-// ===================================================================
+// Fully stop the timer when the tab is hidden, and resume when it's back.
+// Also pause the infinite CSS animations (name gradient/glitch, avatar
+// pulse) via a body class — see .is-hidden-tab in style.css.
+document.addEventListener("visibilitychange", () => {
+  document.body.classList.toggle("is-hidden-tab", document.hidden);
+  if (document.hidden) {
+    clearInterval(particleTimer);
+  } else if (!reducedMotion) {
+    particleTimer = setInterval(spawnNameParticle, 250);
+  }
+});
+
 const canTilt = window.matchMedia("(pointer: fine)").matches && !reducedMotion;
+const MAX_TILT_DEG = 6;
 
+// Cache the card's rect instead of calling getBoundingClientRect() on every
+// mousemove (that forces a synchronous layout read each time). Only
+// re-measure when the layout can actually change.
+let cardRect = null;
+function refreshCardRect(){
+  if (mainCard) cardRect = mainCard.getBoundingClientRect();
+}
 if (canTilt && mainCard) {
-  const MAX_TILT_DEG = 6;
-
-  document.addEventListener("mousemove", (e) => {
-    const r = mainCard.getBoundingClientRect();
-    const rawX = ((e.clientX - r.left) / r.width) * 2 - 1;  // -1..1 across the card, unbounded outside it
-    const rawY = ((e.clientY - r.top) / r.height) * 2 - 1;
-    const nx = Math.max(-1, Math.min(1, rawX));
-    const ny = Math.max(-1, Math.min(1, rawY));
-    const rotY = nx * MAX_TILT_DEG;
-    const rotX = -ny * MAX_TILT_DEG;
-    mainCard.style.transform =
-      `translateY(-50%) perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
-  });
+  refreshCardRect();
+  window.addEventListener("resize", refreshCardRect, { passive: true });
+  window.addEventListener("scroll", refreshCardRect, { passive: true });
 
   document.addEventListener("mouseleave", () => {
     mainCard.style.transform = "translateY(-50%)";
   });
 }
 
-// ===================================================================
-// KONAMI CODE EASTER EGG — up up down down left right left right b a
-// ===================================================================
+// Called from the shared pointer rAF loop above (queuePointerFrame), so this
+// never runs more than once per animation frame regardless of mouse speed.
+function updateTilt(clientX, clientY){
+  if (!canTilt || !mainCard || !cardRect) return;
+  const rawX = ((clientX - cardRect.left) / cardRect.width) * 2 - 1;
+  const rawY = ((clientY - cardRect.top) / cardRect.height) * 2 - 1;
+  const nx = Math.max(-1, Math.min(1, rawX));
+  const ny = Math.max(-1, Math.min(1, rawY));
+  const rotY = nx * MAX_TILT_DEG;
+  const rotX = -ny * MAX_TILT_DEG;
+  mainCard.style.transform =
+    `translateY(-50%) perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+}
+
 const konamiSequence = ["ArrowUp","ArrowUp","ArrowDown","ArrowDown","ArrowLeft","ArrowRight","ArrowLeft","ArrowRight","b","a"];
 let konamiProgress = 0;
 
@@ -857,26 +782,10 @@ function triggerKonamiEasterEgg(){
 
 
 /*
-                                                                                                                                     
-                   KKKKKKKKK    KKKKKKK                                                                                              
-     @@@@@@@@@     K:::::::K    K:::::K                                                                                              
-   @@:::::::::@@   K:::::::K    K:::::K                                                                                              
- @@:::::::::::::@@ K:::::::K   K::::::K                                                                                              
-@:::::::@@@:::::::@KK::::::K  K:::::KKK  aaaaaaaaaaaaa    aaaaaaaaaaaaa  nnnn  nnnnnnnn yyyyyyy           yyyyyyyxxxxxxx      xxxxxxx
-@::::::@   @::::::@  K:::::K K:::::K     a::::::::::::a   a::::::::::::a n:::nn::::::::nny:::::y         y:::::y  x:::::x    x:::::x 
-@:::::@  @@@@:::::@  K::::::K:::::K      aaaaaaaaa:::::a  aaaaaaaaa:::::an::::::::::::::nny:::::y       y:::::y    x:::::x  x:::::x  
-@:::::@  @::::::::@  K:::::::::::K                a::::a           a::::ann:::::::::::::::ny:::::y     y:::::y      x:::::xx:::::x   
-@:::::@  @::::::::@  K:::::::::::K         aaaaaaa:::::a    aaaaaaa:::::a  n:::::nnnn:::::n y:::::y   y:::::y        x::::::::::x    
-@:::::@  @:::::::@@  K::::::K:::::K      aa::::::::::::a  aa::::::::::::a  n::::n    n::::n  y:::::y y:::::y          x::::::::x     
-@:::::@  @@@@@@@@    K:::::K K:::::K    a::::aaaa::::::a a::::aaaa::::::a  n::::n    n::::n   y:::::y:::::y           x::::::::x     
-@::::::@           KK::::::K  K:::::KKKa::::a    a:::::aa::::a    a:::::a  n::::n    n::::n    y:::::::::y           x::::::::::x    
-@:::::::@@@@@@@@   K:::::::K   K::::::Ka::::a    a:::::aa::::a    a:::::a  n::::n    n::::n     y:::::::y           x:::::xx:::::x   
- @@:::::::::::::@  K:::::::K    K:::::Ka:::::aaaa::::::aa:::::aaaa::::::a  n::::n    n::::n      y:::::y           x:::::x  x:::::x  
-   @@:::::::::::@  K:::::::K    K:::::K a::::::::::aa:::aa::::::::::aa:::a n::::n    n::::n     y:::::y           x:::::x    x:::::x 
-     @@@@@@@@@@@   KKKKKKKKK    KKKKKKK  aaaaaaaaaa  aaaa aaaaaaaaaa  aaaa nnnnnn    nnnnnn    y:::::y           xxxxxxx      xxxxxxx
-                                                                                              y:::::y                                
-                                                                                             y:::::y                                 
-                                                                                            y:::::y                                  
-                                                                                           y:::::y                                   
-                                                                                          yyyyyyy
+  _   _                                                   
+ | \ | |  ___ __  __ ___  ___  _ __ ___    ___  _ __  ___ 
+ |  \| | / _ \\ \/ // _ \/ __|| '_ ` _ \  / _ \| '__|/ _ \
+ | |\  ||  __/ >  <|  __/\__ \| | | | | ||  __/| |  |  __/
+ |_| \_| \___|/_/\_\___||___/|_| |_| |_| \___||_|   \___|
+                                          Property of @Nexesmere.
 */

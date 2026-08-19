@@ -1,77 +1,136 @@
-# nexesmere profile
+# nexesmere.com readme
 
-personal bio-link style page. black/white, audio-reactive canvas visualizer, live discord presence pulled from lanyard.
 
-## files
-- `index.html` — structure
-- `style.css` — theme
-- `script.js` — lanyard websocket + visualizer + audio unlock
-- `music/track.mp3` — drop your own audio file here with this exact name (or change the path in `index.html`'s `<audio>` tag)
-- `render.yaml` — static site config for render
+just so yk i didnt build this to be some kind of template for anyone to just use, i just made it for myself so its not super modular or beginner proofed in some spots. most of the easy stuff (discord id, timezone, links, pfps) is just changing a value and ur good. but if u wanna do bigger stuff like adding a whole new social platform, thats gonna mean actually writing/editing js, not just swapping text. if that sounds annoying just paste the file into claude and tell him what u wanna add, itll walk u through it or just do it for u.
 
-## discord data (lanyard)
-your discord id is already wired in at the top of `script.js`:
+heres where to go for the stuff u would prob want to change.
 
+## file map
+
+| file | what it does |
+|---|---|
+| `index.html` | the actual page, social buttons, project links |
+| `script.js` | basically all the logic, discord id, timezone, social preview data, etc |
+| `tracks.js` | bg video/audio playlist |
+| `style.css` | colors, fonts, layout, animations |
+| `server.py` | tiny backend, only exists for the roblox lookup |
+| `icons/` | social icons + the dnd icon |
+| `render.yaml` / `requirements.txt` | deploy stuff for render.com |
+
+---
+
+## 1. making it show ur discord instead of mine
+
+this doesnt use a static pfp/name, it pulls ur discord presence over the lanyard websocket. to switch it to ur account
+
+open `script.js`, line 1:
 ```js
 const DISCORD_ID = "728856632288608336";
 ```
+swap that for ur own discord user id (right click ur name in discord > copy user id, u gotta turn on dev mode first in settings > advanced).
 
-lanyard needs you to be in their discord server for presence to work: https://discord.gg/lanyard — join it once and your presence will start showing up on any site using the api, no bot install needed.
+sooo lanyard only works if the account has joined the lanyard discord server (https://discord.gg/lanyard) at least once. If ur not in the server it wont load anything for discord, thats why, so go join it, and thats it u dont have to do anything else with lanyard.
 
-pulled automatically:
-- pfp (animated if you have a gif avatar), shown in full color
-- display name (big) + @username (small underneath)
-- status dot (online/idle/dnd/offline)
-- custom status text
-- avatar decoration, if your account has one equipped
-- current activity (game/app), spotify now playing
+once thats done it auto updates ur pfp, display name, username, status dot, "now playing" feed, avatar decoration, all of it. (just not ur bio😔)
 
-**not pulled: discord "profile effects."** those are the animated backgrounds behind your pfp inside the discord client itself. as of now discord doesn't expose them through lanyard or any public api, so there's no legitimate way to pull them live — anything claiming to do that is either scraping in a way that'll break constantly or straight up faking it. if you want that vibe here, the honest move is a css animation behind the avatar built to look similar, not a real mirror of it.
+## 2. the "my time" clock
 
-## click to enter
-the whole page loads blurred behind a "CLICK TO ENTER" gate. clicking it does three things at once, in the same user gesture (required for browsers to allow audio):
-1. unblurs the card
-2. starts the audio context
-3. plays `music/track.mp3` immediately at 50% volume
+find this in `script.js`:
+```js
+const MY_TIMEZONE = "America/New_York";
+```
+change it to ur own timezone (https://en.wikipedia.org/wiki/List_of_tz_database_time_zones),
+## 3. social links
 
-after that the visualizer switches from its idle sine wave to reacting off real frequency data from the track.
+theres 2 kinds of "social" stuff here, the little preview buttons that pop open a mini card (insta/discord/roblox), and the plain project chip links at the bottom.
 
-## socials
-three icon buttons (discord, instagram, roblox) linking to your profiles — no background, just your own PNGs floating with a lift-and-glow on hover.
+### changing where an existing one links to
 
-drop your images in as:
-- `icons/discord.png`
-- `icons/instagram.png`
-- `icons/roblox.png`
-- `icons/dnd.png` — shown over the status dot specifically when your discord status is "do not disturb." if this file's missing, it falls back to the plain css dnd dot (red circle, white bar) automatically instead of breaking.
+sadly i could not manage to find somthing to publicly expose instgram information, so it will have to be updated manually, if u want to show ur insta.
 
-that's it, `index.html` already points at those paths. if your images have visible padding/whitespace baked in they'll look off-center in the 40x40 box — trim tight to the icon shape for the cleanest look.
+- **instagram**: open `script.js`, find `PROFILE_DATA` near the top:
+  ```js
+  const PROFILE_DATA = {
+    instagram: {
+      pfp: "icons/preview-instagram.jpg",
+      username: "pat2769_",
+      displayName: "PAT😝",
+      posts: 38,
+      bio: "...",
+      url: "https://www.instagram.com/pat2769_/"
+    }
+  };
+  ```
+  just change username/displayName/posts/bio/url and swap the pfp file for ur own pic in `icons/`.
+- **roblox**: find these lines a bit further down:
+  ```js
+  const ROBLOX_USER_ID = "1230783705";
+  const ROBLOX_PROFILE_URL = "https://www.roblox.com/users/1230783705/profile";
+  ```
+  swap the id and url. this one auto pulls ur roblox pfp/name/bio from `server.py` so u dont gotta fill that stuff in by hand like instagram.
+- **discord**: this always just mirrors whatever `DISCORD_ID` u set in step 1, nothing else to touch.
 
-## background details
-- **stars** — a full starfield behind everything, twinkling on independent sine cycles, slow ambient drift, mostly white with a scattering tinted blue and a few warm/amber ones for realism
-- **name particles** — glowing dots (white/blue/gold) continuously drift up around your display name, sized and spaced to actually read at a glance rather than just a subtle dusting
-- **display name animation** — a continuously flowing gradient runs through the text (black → gray → white → black, looping), with a thin light stroke around the letters so they stay readable even when the fill passes through black against the black background. plus a quick glitch tick every ~6.5s (brief offset + soft color-split)
-- all of the above respect `prefers-reduced-motion` — particles stop spawning, the shine/glitch turns off (name goes solid), and the pfp pulse turns off if that's set on the visitor's system
+### adding a whole new social (twitter, youtube, whatever)
+this is the one part thats actual coding, not just swapping a value, since this wasnt built to be generic. if u dont wanna mess with it by hand, just paste `script.js` and `index.html` into claude and say "add a twitter social preview like the instagram one" and itll handle it.
 
-## music
-you can use either:
-- `music/track.mp3` — audio only, plain black background like before
-- `music/track.mp4` — video + audio. the video becomes the background, heavily blurred and dimmed so it doesn't fight with the text/stars on top, and its audio track drives the visualizer instead of a separate mp3
+### the project chips at the bottom
 
-**mp4 takes priority.** the page checks for `music/track.mp4` first on load; if it's not there, it falls back to `music/track.mp3`. you only need one of the two, not both — no need to remove the other file if you switch, it just won't be used.
+same thing pretty much, just ask claude to change, or add new ones, or if u want to do it manually i actually know how cuz im pro but here:
 
-either way, playback (and unmuting, for video) only starts once you click "click to enter," same as before — browsers require a click before audio/video can play with sound.
+open `index.html`, find:
+```html
+<div class="projects-row">
+  <a class="project-chip" href="https://exedevelopement.com/sentinel/" target="_blank" rel="noopener noreferrer">Sentinel</a>
+  <a class="project-chip" href="https://eywa.lol" target="_blank" rel="noopener noreferrer">eywa.lol</a>
+</div>
+```
+each `<a>` is one chip, text in the middle is the label, `href` is where it goes. add/remove `<a class="project-chip">` lines however u want.
+so basically, just coppy each line and change the link to ur link, and change the text in the middle of `<a>` to the lable of the site like Error or somt
+## 4. pfps
 
-## deploy on render
-1. push this repo to github
-2. render dashboard → new → static site → connect the repo
-3. build command: leave blank
-4. publish directory: `.`
-5. deploy
+- **main avatar**: comes straight from discord through `DISCORD_ID`.
+- **instagram preview pic**: `icons/preview-instagram.jpg`, just replace the file (keep the name, or update the `pfp` path in `PROFILE_DATA.instagram` if u rename it)
+- **roblox preview pic**: pulled from roblox through `server.py`, nothing to upload, just follows `ROBLOX_USER_ID`
+- **the small social button icons**: swap the pngs in `icons/` (`instagram.png`, `discord.png`, `roblox.png`), keep the filenames matching what `index.html` points to, or edit the `src` paths urself
 
-(`render.yaml` above does this automatically if you use render's "blueprint" deploy option instead of clicking through manually)
+## 5. bg video/music playlist
 
-## notes
-- everything's grayscale/contrast-filtered on purpose, even if your actual pfp has color, to keep the theme consistent
-- visualizer draws off the real `<audio>` element via the web audio api, mirrored bars off a center axis
-- reduced-motion is respected (kills the avatar pulse animation)
+open `tracks.js`:
+```js
+const TRACKS = [
+  { url: "https://pub-a17495cad61f41da8d8e455e1292573b.r2.dev/track1.mp4", type: "video" },
+];
+```
+add as many as u want, each one needs a direct `url` to a hosted file and a `type` of `"video"` or `"audio"`. it dhould crossfades between them, but i havent tested that yet. files gotta be hosted somewhere with a direct link (cloudflare r2, s3, etc)
+
+## 6. colors/fonts/layout
+
+all in `style.css`. one big stylesheet, theres css variables near the top for the main colors, search for `:root` to find them and tweak from there.
+or just use claude lol.
+
+## 7. running it / deploying
+
+only needs the python backend cuz of the roblox lookup (`/api/roblox/{user_id}` in `server.py`), everything else is just static html/js.
+
+**run it locally first so yk it works😡:**
+```bash
+pip install -r requirements.txt
+uvicorn server:app --reload
+```
+then open `http://127.0.0.1:8000`
+
+**deploying:** `render.yaml` is already set up for render so just make a new webservice and deploy.
+```bash
+uvicorn server:app --host 0.0.0.0 --port $PORT
+```
+
+---
+
+**tldr checklist to make it urs:**
+- [ ] `DISCORD_ID` in `script.js` (and join the lanyard discord with that account)
+- [ ] `MY_TIMEZONE` in `script.js`
+- [ ] `PROFILE_DATA.instagram` in `script.js` (or just delete the button if u dont want it)
+- [ ] `ROBLOX_USER_ID` + `ROBLOX_PROFILE_URL` in `script.js`
+- [ ] project chips in `index.html`
+- [ ] icons in `icons/`
+- [ ] `TRACKS` in `tracks.js`

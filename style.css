@@ -4,9 +4,8 @@
   --mid:#7a7a76;
   --line:#232320;
   --glow: rgba(242,242,237,.45);
-  --danger:#f2f2ed; /* status colors kept monochrome on purpose */
+  --danger:#f2f2ed;
 
-  /* stacking order — named so the layering is obvious instead of guessed at */
   --z-backdrop:0;
   --z-ambient:1;
   --z-content:2;
@@ -27,10 +26,6 @@ html,body{
   font-family:'JetBrains Mono',monospace;
 }
 
-/* darkens the bg video — same trick as a lot of sites use: a static
-   radial gradient sitting above the video, nothing animated, no
-   filter. basically free to render compared to actually lowering
-   the video's own brightness dynamically. */
 body::before{
   content:"";
   position:fixed;
@@ -47,19 +42,9 @@ body::before{
   height:100%;
   object-fit:cover;
   z-index:var(--z-backdrop);
-  /* no live filter anymore — blur/brightness/saturate are baked into
-     the video file itself now (see README note on track encoding).
-     this is what was actually choking under load: a real-time full-
-     screen GPU blur running every frame, fighting your screen
-     recorder for the same GPU. baking it in removes that cost
-     completely — this is now just a plain video element. */
-  opacity:0; /* JS crossfades this between 0 and 1 — no more hard on/off */
 
-  /* promotes the video to its own GPU compositor layer so decode +
-     opacity crossfading don't get stuck fighting the rest of the page
-     for main-thread time under load. translateZ(0) is the classic
-     layer-promotion hack; backface-visibility avoids a Safari flicker
-     that trick can cause. */
+  opacity:0;
+
   will-change:opacity;
   transform:translateZ(0);
   backface-visibility:hidden;
@@ -75,7 +60,6 @@ body::before{
   mix-blend-mode:overlay;
 }
 
-/* ---------- my time widget ---------- */
 .my-time-widget{
   position:fixed;
   top:20px;
@@ -101,7 +85,6 @@ body::before{
   font-variant-numeric:tabular-nums;
 }
 
-/* ---------- entry gate ---------- */
 .entry-gate{
   position:fixed;
   inset:0;
@@ -131,7 +114,6 @@ body::before{
   50%{ transform:scale(1.03); }
 }
 
-/* ---------- card ---------- */
 .card{
   position:relative;
   z-index:var(--z-content);
@@ -154,8 +136,6 @@ body::before{
   filter:blur(14px);
 }
 
-/* one-shot flash for the konami easter egg — NOT continuous, only
-   runs for ~1.2s when triggered, so it costs nothing at rest */
 @keyframes konamiFlash{
   0%{ filter:none; }
   40%{ filter:hue-rotate(180deg) saturate(2); }
@@ -254,25 +234,22 @@ body::before{
   height:5px;
   border-radius:50%;
   background:var(--fg);
-  box-shadow:
-    0 0 6px rgba(242,242,237,.9),
-    0 0 14px rgba(242,242,237,.4);
+  /* single glow instead of two stacked blurred shadows — much cheaper to
+     paint, especially with a dozen of these animating at once */
+  box-shadow:0 0 10px rgba(242,242,237,.7);
   opacity:0;
+  will-change:transform, opacity;
   animation:particleFloat 2.6s cubic-bezier(.15,.6,.35,1) forwards;
 }
 
 .particle.blue{
   background:#9ec8ff;
-  box-shadow:
-    0 0 8px rgba(158,200,255,1),
-    0 0 18px rgba(158,200,255,.5);
+  box-shadow:0 0 12px rgba(158,200,255,.85);
 }
 
 .particle.gold{
   background:#ffdf9e;
-  box-shadow:
-    0 0 8px rgba(255,223,158,1),
-    0 0 18px rgba(255,223,158,.5);
+  box-shadow:0 0 12px rgba(255,223,158,.85);
 }
 
 @keyframes particleFloat{
@@ -347,9 +324,7 @@ body::before{
   width:0%;
   background:var(--fg);
   border-radius:2px;
-  /* width updates on every timeupdate tick (a few times/sec) — the
-     transition just smooths those steps into a continuous-looking
-     fill instead of visibly jumping */
+
   transition:width .25s linear;
 }
 
@@ -407,9 +382,6 @@ body::before{
   transition:transform var(--transition-fast) ease, filter var(--transition-fast) ease;
 }
 
-/* two of the four socials are now <button> elements (they toggle a
-   preview instead of navigating) — strip the default button chrome
-   so they look identical to the <a> ones */
 button.social-btn{
   background:none;
   border:none;
@@ -437,9 +409,6 @@ button.social-btn{
   transform:translateY(-1px);
 }
 
-/* ---------- social preview panel ---------- */
-/* collapsed by default — expands open, then the content fades in
-   slightly after, instead of popping in all at once */
 .social-preview-panel{
   width:100%;
   max-height:0;
@@ -563,7 +532,6 @@ button.social-btn{
   transform:translateY(-2px);
 }
 
-/* ---------- projects row ---------- */
 .projects-label{
   font-size:9px;
   letter-spacing:.18em;
@@ -604,6 +572,16 @@ button.social-btn{
   .card{ padding:26px 20px; }
 }
 
+/* Pause purely-decorative infinite animations while the tab is in the
+   background — toggled by script.js via the Page Visibility API. These
+   keep animating forever otherwise, burning CPU/GPU for a tab nobody is
+   looking at. */
+body.is-hidden-tab .avatar,
+body.is-hidden-tab .display-name,
+body.is-hidden-tab .entry-text{
+  animation-play-state:paused;
+}
+
 @media (prefers-reduced-motion: reduce){
   .avatar{ animation:none; }
   .particle{ display:none; }
@@ -617,12 +595,6 @@ button.social-btn{
   .social-preview-panel{ transition:none; }
 }
 
-/* ---------- custom cursor ---------- */
-/* frosted-glass dot — blurs whatever's behind it instead of just
-   sitting on top as a flat tint, with a soft edge for the glass
-   bevel. brightens slightly over anything clickable. only kicks in
-   on fine-pointer (mouse) devices — touch screens don't have a
-   cursor to replace, so we leave those alone. */
 @media (pointer: fine){
   html, body, a, button, input, select, textarea, label, [role="button"], .entry-gate{
     cursor:none !important;
@@ -648,7 +620,7 @@ button.social-btn{
   }
 
   .custom-cursor.is-hover{
-    border-color:#fff; /* the STROKE turns white, fill stays the same */
+    border-color:#fff;
   }
 }
 
