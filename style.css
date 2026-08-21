@@ -234,22 +234,25 @@ body::before{
   height:5px;
   border-radius:50%;
   background:var(--fg);
-  /* single glow instead of two stacked blurred shadows — much cheaper to
-     paint, especially with a dozen of these animating at once */
-  box-shadow:0 0 10px rgba(242,242,237,.7);
+  box-shadow:
+    0 0 6px rgba(242,242,237,.9),
+    0 0 14px rgba(242,242,237,.4);
   opacity:0;
-  will-change:transform, opacity;
   animation:particleFloat 2.6s cubic-bezier(.15,.6,.35,1) forwards;
 }
 
 .particle.blue{
   background:#9ec8ff;
-  box-shadow:0 0 12px rgba(158,200,255,.85);
+  box-shadow:
+    0 0 8px rgba(158,200,255,1),
+    0 0 18px rgba(158,200,255,.5);
 }
 
 .particle.gold{
   background:#ffdf9e;
-  box-shadow:0 0 12px rgba(255,223,158,.85);
+  box-shadow:
+    0 0 8px rgba(255,223,158,1),
+    0 0 18px rgba(255,223,158,.5);
 }
 
 @keyframes particleFloat{
@@ -570,16 +573,6 @@ button.social-btn{
 @media (max-width:480px){
   .display-name{ font-size:26px; }
   .card{ padding:26px 20px; }
-}
-
-/* Pause purely-decorative infinite animations while the tab is in the
-   background — toggled by script.js via the Page Visibility API. These
-   keep animating forever otherwise, burning CPU/GPU for a tab nobody is
-   looking at. */
-body.is-hidden-tab .avatar,
-body.is-hidden-tab .display-name,
-body.is-hidden-tab .entry-text{
-  animation-play-state:paused;
 }
 
 @media (prefers-reduced-motion: reduce){

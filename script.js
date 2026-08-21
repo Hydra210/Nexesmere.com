@@ -1,47 +1,22 @@
 const DISCORD_ID = "728856632288608336";
 
-// Single shared pointer tracker: one mousemove listener, one rAF loop.
-// Both the custom cursor and the card tilt read from this instead of each
-// running their own listener + doing DOM writes synchronously per event.
-const pointerState = { x: 0, y: 0, has: false };
-let pointerRafQueued = false;
-
 if (window.matchMedia("(pointer: fine)").matches) {
   const cursorEl = document.createElement("div");
   cursorEl.className = "custom-cursor";
   cursorEl.setAttribute("aria-hidden", "true");
   document.body.appendChild(cursorEl);
 
-  const CURSOR_CLICKABLE = "a, button, input, select, textarea, label, [role='button'], [onclick], .social-btn, .entry-gate";
-
   window.addEventListener("mousemove", (e) => {
-    pointerState.x = e.clientX;
-    pointerState.y = e.clientY;
-    pointerState.has = true;
-    queuePointerFrame();
-  }, { passive: true });
+    cursorEl.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+  });
+
+  const CURSOR_CLICKABLE = "a, button, input, select, textarea, label, [role='button'], [onclick], .social-btn, .entry-gate";
 
   document.addEventListener("mouseover", (e) => {
     if (e.target.closest(CURSOR_CLICKABLE)) cursorEl.classList.add("is-hover");
   });
   document.addEventListener("mouseout", (e) => {
     if (e.target.closest(CURSOR_CLICKABLE)) cursorEl.classList.remove("is-hover");
-  });
-
-  window.__cursorEl = cursorEl;
-}
-
-function queuePointerFrame(){
-  if (pointerRafQueued) return;
-  pointerRafQueued = true;
-  requestAnimationFrame(() => {
-    pointerRafQueued = false;
-    if (!pointerState.has) return;
-
-    if (window.__cursorEl) {
-      window.__cursorEl.style.transform = `translate(${pointerState.x}px, ${pointerState.y}px) translate(-50%, -50%)`;
-    }
-    if (typeof updateTilt === "function") updateTilt(pointerState.x, pointerState.y);
   });
 }
 
@@ -364,9 +339,7 @@ document.querySelectorAll(".js-preview-trigger").forEach(btn => {
 });
 
 const audioEl = document.getElementById("bgAudio");
-const audioEl2 = document.getElementById("bgAudio2");
 const bgVideo = document.getElementById("bgVideo");
-const bgVideo2 = document.getElementById("bgVideo2");
 const entryGate = document.getElementById("entryGate");
 const mainCard = document.getElementById("mainCard");
 const nameParticles = document.getElementById("nameParticles");
@@ -374,10 +347,42 @@ const nameParticles = document.getElementById("nameParticles");
 let audioReady = false;
 let mediaEl = audioEl;
 
-const layers = [
-  { video: bgVideo, audio: audioEl },
-  { video: bgVideo2, audio: audioEl2 }
-];
+// The second crossfade layer (a whole extra <video> + <audio> pair) used to
+// exist in the DOM at all times, even with a single-track playlist, which
+// permanently doubled decoded-video / GPU-layer memory for no reason. Now
+// it's only created lazily, the moment a second track actually needs it.
+let bgVideo2 = null;
+let audioEl2 = null;
+
+const layers = [{ video: bgVideo, audio: audioEl }, null];
+
+function attachMediaListeners(el){
+  el.addEventListener("timeupdate", handleTimeUpdate);
+  el.addEventListener("ended", handleEnded);
+  el.addEventListener("stalled", () => { if (el === activeEl) el.load(); });
+}
+
+function ensureSecondLayer(){
+  if (layers[1]) return;
+
+  bgVideo2 = document.createElement("video");
+  bgVideo2.id = "bgVideo2";
+  bgVideo2.className = "bg-video";
+  bgVideo2.muted = true;
+  bgVideo2.playsInline = true;
+  bgVideo2.preload = "auto";
+  bgVideo.insertAdjacentElement("afterend", bgVideo2);
+
+  audioEl2 = document.createElement("audio");
+  audioEl2.id = "bgAudio2";
+  audioEl2.preload = "auto";
+  document.body.appendChild(audioEl2);
+
+  layers[1] = { video: bgVideo2, audio: audioEl2 };
+  attachMediaListeners(bgVideo2);
+  attachMediaListeners(audioEl2);
+}
+
 let activeLayerIndex = 0;
 let activeEl = null;
 let crossfadeTriggered = false;
@@ -491,6 +496,8 @@ async function crossfadeToTrack(i){
     return playSingleTrackLoop(track);
   }
 
+  ensureSecondLayer();
+
   const prevEl = activeEl;
   const newLayerIndex = 1 - activeLayerIndex;
   const newLayer = layers[newLayerIndex];
@@ -581,14 +588,8 @@ function handleEnded(e){
   crossfadeToTrack(currentTrackIndex);
 }
 
-const allMediaEls = [bgVideo, bgVideo2, audioEl, audioEl2];
-
-allMediaEls.forEach(el => {
-  el.addEventListener("timeupdate", handleTimeUpdate);
-  el.addEventListener("ended", handleEnded);
-
-  el.addEventListener("stalled", () => { if (el === activeEl) el.load(); });
-});
+attachMediaListeners(bgVideo);
+attachMediaListeners(audioEl);
 
 let lastWatchdogTime = -1;
 setInterval(() => {
@@ -662,13 +663,11 @@ document.addEventListener("visibilitychange", () => {
 
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const MAX_PARTICLES_ONSCREEN = 14; // hard cap so a slow frame can't let these pile up
-let particleCount = 0;
+const MAX_PARTICLES = 40;
 
 function spawnNameParticle(){
   if (reducedMotion) return;
-  if (document.hidden) return; // don't burn CPU on a backgrounded tab
-  if (particleCount >= MAX_PARTICLES_ONSCREEN) return;
+  if (nameParticles.childElementCount >= MAX_PARTICLES) return;
 
   const width = nameParticles.clientWidth || 200;
   const p = document.createElement("span");
@@ -690,59 +689,33 @@ function spawnNameParticle(){
   p.style.setProperty("--dx", `${drift}px`);
 
   nameParticles.appendChild(p);
-  particleCount++;
-  p.addEventListener("animationend", () => { p.remove(); particleCount--; }, { once: true });
+  p.addEventListener("animationend", () => p.remove());
 }
 
-// One interval instead of two overlapping ones. ~1 particle every ~250ms on
-// average (was effectively ~1 every ~90ms combined before) — still reads as
-// a steady sparkle, but far less DOM churn and paint work over time.
-let particleTimer = setInterval(spawnNameParticle, 250);
+setInterval(spawnNameParticle, 140);
 
-// Fully stop the timer when the tab is hidden, and resume when it's back.
-// Also pause the infinite CSS animations (name gradient/glitch, avatar
-// pulse) via a body class — see .is-hidden-tab in style.css.
-document.addEventListener("visibilitychange", () => {
-  document.body.classList.toggle("is-hidden-tab", document.hidden);
-  if (document.hidden) {
-    clearInterval(particleTimer);
-  } else if (!reducedMotion) {
-    particleTimer = setInterval(spawnNameParticle, 250);
-  }
-});
+setInterval(() => { if (Math.random() < 0.5) spawnNameParticle(); }, 220);
 
 const canTilt = window.matchMedia("(pointer: fine)").matches && !reducedMotion;
-const MAX_TILT_DEG = 6;
 
-// Cache the card's rect instead of calling getBoundingClientRect() on every
-// mousemove (that forces a synchronous layout read each time). Only
-// re-measure when the layout can actually change.
-let cardRect = null;
-function refreshCardRect(){
-  if (mainCard) cardRect = mainCard.getBoundingClientRect();
-}
 if (canTilt && mainCard) {
-  refreshCardRect();
-  window.addEventListener("resize", refreshCardRect, { passive: true });
-  window.addEventListener("scroll", refreshCardRect, { passive: true });
+  const MAX_TILT_DEG = 6;
+
+  document.addEventListener("mousemove", (e) => {
+    const r = mainCard.getBoundingClientRect();
+    const rawX = ((e.clientX - r.left) / r.width) * 2 - 1;
+    const rawY = ((e.clientY - r.top) / r.height) * 2 - 1;
+    const nx = Math.max(-1, Math.min(1, rawX));
+    const ny = Math.max(-1, Math.min(1, rawY));
+    const rotY = nx * MAX_TILT_DEG;
+    const rotX = -ny * MAX_TILT_DEG;
+    mainCard.style.transform =
+      `translateY(-50%) perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+  });
 
   document.addEventListener("mouseleave", () => {
     mainCard.style.transform = "translateY(-50%)";
   });
-}
-
-// Called from the shared pointer rAF loop above (queuePointerFrame), so this
-// never runs more than once per animation frame regardless of mouse speed.
-function updateTilt(clientX, clientY){
-  if (!canTilt || !mainCard || !cardRect) return;
-  const rawX = ((clientX - cardRect.left) / cardRect.width) * 2 - 1;
-  const rawY = ((clientY - cardRect.top) / cardRect.height) * 2 - 1;
-  const nx = Math.max(-1, Math.min(1, rawX));
-  const ny = Math.max(-1, Math.min(1, rawY));
-  const rotY = nx * MAX_TILT_DEG;
-  const rotX = -ny * MAX_TILT_DEG;
-  mainCard.style.transform =
-    `translateY(-50%) perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
 }
 
 const konamiSequence = ["ArrowUp","ArrowUp","ArrowDown","ArrowDown","ArrowLeft","ArrowRight","ArrowLeft","ArrowRight","b","a"];
