@@ -424,7 +424,7 @@ button.social-btn{
 
 .social-preview-panel{
   flex-shrink:0;
-  align-self:flex-start;
+  align-self:center;
   width:0;
   max-width:0;
   opacity:0;
@@ -448,8 +448,8 @@ button.social-btn{
 }
 
 .social-preview-panel.is-open{
-  width:min(300px, 82vw);
-  max-width:300px;
+  width:min(420px, 90vw);
+  max-width:420px;
   opacity:1;
   padding:28px 24px;
   transform:translateX(0);
