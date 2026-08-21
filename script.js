@@ -359,7 +359,15 @@ const layers = [{ video: bgVideo, audio: audioEl }, null];
 function attachMediaListeners(el){
   el.addEventListener("timeupdate", handleTimeUpdate);
   el.addEventListener("ended", handleEnded);
-  el.addEventListener("stalled", () => { if (el === activeEl) el.load(); });
+
+  let lastReload = 0;
+  el.addEventListener("stalled", () => {
+    if (el !== activeEl) return;
+    const now = performance.now();
+    if (now - lastReload < 8000) return; // avoid reload-triggers-stall-triggers-reload loops
+    lastReload = now;
+    el.load();
+  });
 }
 
 function ensureSecondLayer(){
@@ -428,12 +436,15 @@ function timeoutPromise(ms){
 async function ensureRealDuration(el){
   if (isFinite(el.duration) && el.duration > 0) return;
 
+  // NOTE: setting el.src already starts the fetch when preload isn't "none" —
+  // calling el.load() here used to abort that in-flight download and restart
+  // it from scratch (a second full request for the same file, visible as a
+  // duplicate entry in the Network tab). Just wait for metadata instead.
   if (el.readyState === 0) {
 
     await Promise.race([
       new Promise(resolve => {
         el.addEventListener("loadedmetadata", resolve, { once: true });
-        el.load();
       }),
       timeoutPromise(4000)
     ]);
