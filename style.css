@@ -441,6 +441,7 @@ button.social-btn{
   transition:
     max-width var(--transition-slow) ease,
     width var(--transition-slow) ease,
+    height var(--transition-slow) ease,
     padding var(--transition-slow) ease,
     transform var(--transition-slow) ease,
     border-color var(--transition-slow) ease,

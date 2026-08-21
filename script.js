@@ -306,7 +306,11 @@ function renderSocialPreview(platform){
   }
 }
 
+let previewHeightCleanupTimer = null;
+
 function closeSocialPreview(){
+  if (previewHeightCleanupTimer) clearTimeout(previewHeightCleanupTimer);
+  previewPanel.style.height = "";
   previewPanel.classList.remove("is-open");
   document.querySelectorAll(".js-preview-trigger").forEach(btn => {
     btn.classList.remove("is-active");
@@ -327,11 +331,43 @@ function openSocialPreview(platform, btn){
   openPreviewPlatform = platform;
 }
 
+function switchSocialPreview(platform, btn){
+  document.querySelectorAll(".js-preview-trigger").forEach(b => {
+    b.classList.remove("is-active");
+    b.setAttribute("aria-expanded", "false");
+  });
+  btn.classList.add("is-active");
+  btn.setAttribute("aria-expanded", "true");
+
+  if (previewHeightCleanupTimer) clearTimeout(previewHeightCleanupTimer);
+
+  // Lock the panel to its current height so swapping content doesn't snap.
+  const startHeight = previewPanel.getBoundingClientRect().height;
+  previewPanel.style.height = `${startHeight}px`;
+
+  renderSocialPreview(platform);
+  openPreviewPlatform = platform;
+
+  // Let the new content lay itself out, then animate to its real height.
+  requestAnimationFrame(() => {
+    const endHeight = previewPanel.scrollHeight;
+    requestAnimationFrame(() => {
+      previewPanel.style.height = `${endHeight}px`;
+    });
+  });
+
+  previewHeightCleanupTimer = setTimeout(() => {
+    previewPanel.style.height = "";
+  }, 420);
+}
+
 document.querySelectorAll(".js-preview-trigger").forEach(btn => {
   btn.addEventListener("click", () => {
     const platform = btn.dataset.platform;
     if (openPreviewPlatform === platform) {
       closeSocialPreview();
+    } else if (openPreviewPlatform) {
+      switchSocialPreview(platform, btn);
     } else {
       openSocialPreview(platform, btn);
     }
@@ -707,28 +743,6 @@ function spawnNameParticle(){
 setInterval(spawnNameParticle, 140);
 
 setInterval(() => { if (Math.random() < 0.5) spawnNameParticle(); }, 220);
-
-const canTilt = window.matchMedia("(pointer: fine)").matches && !reducedMotion;
-
-if (canTilt && mainCard) {
-  const MAX_TILT_DEG = 6;
-
-  document.addEventListener("mousemove", (e) => {
-    const r = mainCard.getBoundingClientRect();
-    const rawX = ((e.clientX - r.left) / r.width) * 2 - 1;
-    const rawY = ((e.clientY - r.top) / r.height) * 2 - 1;
-    const nx = Math.max(-1, Math.min(1, rawX));
-    const ny = Math.max(-1, Math.min(1, rawY));
-    const rotY = nx * MAX_TILT_DEG;
-    const rotX = -ny * MAX_TILT_DEG;
-    mainCard.style.transform =
-      `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
-  });
-
-  document.addEventListener("mouseleave", () => {
-    mainCard.style.transform = "";
-  });
-}
 
 const konamiSequence = ["ArrowUp","ArrowUp","ArrowDown","ArrowDown","ArrowLeft","ArrowRight","ArrowLeft","ArrowRight","b","a"];
 let konamiProgress = 0;
