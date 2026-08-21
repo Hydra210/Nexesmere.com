@@ -23,6 +23,8 @@
     <span class="entry-text">CLICK TO ENTER</span>
   </div>
 
+  <div id="stage" class="stage">
+
   <main id="mainCard" class="card is-blurred">
 
     <div class="avatar-wrap">
@@ -52,31 +54,16 @@
 
     <div class="divider"></div>
 
-    <div class="socials-wrap">
-      <div class="socials">
-        <button type="button" class="social-btn js-preview-trigger" data-platform="instagram" aria-label="Instagram" aria-expanded="false">
-          <img src="icons/instagram.png" alt="Instagram" class="social-icon js-social-icon">
-        </button>
-        <button type="button" class="social-btn js-preview-trigger" data-platform="discord" aria-label="Discord" aria-expanded="false">
-          <img src="icons/discord.png" alt="Discord" class="social-icon js-social-icon">
-        </button>
-        <button type="button" class="social-btn js-preview-trigger" data-platform="roblox" aria-label="Roblox" aria-expanded="false">
-          <img src="icons/roblox.png" alt="Roblox" class="social-icon js-social-icon">
-        </button>
-      </div>
-
-      <div id="socialPreviewPanel" class="social-preview-panel">
-        <div class="preview-header">
-          <img id="previewAvatar" class="preview-avatar" src="" alt="">
-          <div class="preview-id">
-            <span id="previewDisplayName" class="preview-display-name">-</span>
-            <span id="previewUsername" class="preview-username">-</span>
-          </div>
-        </div>
-        <div id="previewStats" class="preview-stats"></div>
-        <p id="previewBio" class="preview-bio"></p>
-        <a id="previewVisitBtn" class="preview-visit-btn" href="#" target="_blank" rel="noopener noreferrer">go to site</a>
-      </div>
+    <div class="socials">
+      <button type="button" class="social-btn js-preview-trigger" data-platform="instagram" aria-label="Instagram" aria-expanded="false">
+        <img src="icons/instagram.png" alt="Instagram" class="social-icon js-social-icon">
+      </button>
+      <button type="button" class="social-btn js-preview-trigger" data-platform="discord" aria-label="Discord" aria-expanded="false">
+        <img src="icons/discord.png" alt="Discord" class="social-icon js-social-icon">
+      </button>
+      <button type="button" class="social-btn js-preview-trigger" data-platform="roblox" aria-label="Roblox" aria-expanded="false">
+        <img src="icons/roblox.png" alt="Roblox" class="social-icon js-social-icon">
+      </button>
     </div>
 
     <div class="divider"></div>
@@ -89,6 +76,21 @@
     </div>
 
   </main>
+
+  <div id="socialPreviewPanel" class="social-preview-panel">
+    <div class="preview-header">
+      <img id="previewAvatar" class="preview-avatar" src="" alt="">
+      <div class="preview-id">
+        <span id="previewDisplayName" class="preview-display-name">-</span>
+        <span id="previewUsername" class="preview-username">-</span>
+      </div>
+    </div>
+    <div id="previewStats" class="preview-stats"></div>
+    <p id="previewBio" class="preview-bio"></p>
+    <a id="previewVisitBtn" class="preview-visit-btn" href="#" target="_blank" rel="noopener noreferrer">go to site</a>
+  </div>
+
+  </div>
 
   <audio id="bgAudio" preload="auto"></audio>
 

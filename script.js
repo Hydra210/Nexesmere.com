@@ -722,11 +722,11 @@ if (canTilt && mainCard) {
     const rotY = nx * MAX_TILT_DEG;
     const rotX = -ny * MAX_TILT_DEG;
     mainCard.style.transform =
-      `translateY(-50%) perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+      `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
   });
 
   document.addEventListener("mouseleave", () => {
-    mainCard.style.transform = "translateY(-50%)";
+    mainCard.style.transform = "";
   });
 }
 

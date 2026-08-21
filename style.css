@@ -114,13 +114,23 @@ body::before{
   50%{ transform:scale(1.03); }
 }
 
-.card{
+.stage{
   position:relative;
   z-index:var(--z-content);
+  min-height:100vh;
+  width:100%;
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:center;
+  gap:20px;
+  padding:40px 16px;
+}
+
+.card{
+  position:relative;
+  flex-shrink:0;
   width:min(420px, 90vw);
-  margin:0 auto;
-  top:50%;
-  transform:translateY(-50%);
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -412,39 +422,37 @@ button.social-btn{
   transform:translateY(-1px);
 }
 
-.socials-wrap{
-  position:relative;
-  width:100%;
-}
-
 .social-preview-panel{
-  position:absolute;
-  top:calc(100% + 10px);
-  left:0;
-  right:0;
-  z-index:20;
-  max-height:0;
-  padding:0 16px;
+  flex-shrink:0;
+  align-self:flex-start;
+  width:0;
+  max-width:0;
   opacity:0;
   overflow:hidden;
-  background:rgba(8,8,7,.94);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
+  padding:0;
+  background:rgba(4,4,4,.55);
   border:1px solid transparent;
-  border-radius:16px;
+  border-radius:28px;
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
   text-align:left;
   pointer-events:none;
+  transform:translateX(-16px);
   transition:
-    max-height var(--transition-slow) ease,
+    max-width var(--transition-slow) ease,
+    width var(--transition-slow) ease,
     padding var(--transition-slow) ease,
+    transform var(--transition-slow) ease,
     border-color var(--transition-slow) ease,
     opacity var(--transition-fast) ease .12s;
 }
 
 .social-preview-panel.is-open{
-  max-height:380px;
-  padding:16px;
+  width:min(300px, 82vw);
+  max-width:300px;
   opacity:1;
+  padding:28px 24px;
+  transform:translateX(0);
   border-color:var(--line);
   pointer-events:auto;
 }
@@ -602,6 +610,21 @@ button.social-btn{
 @media (max-width:480px){
   .display-name{ font-size:26px; }
   .card{ padding:26px 20px; }
+}
+
+@media (max-width:780px){
+  .stage{
+    flex-direction:column;
+  }
+  .social-preview-panel{
+    align-self:center;
+    transform:translateY(-14px);
+  }
+  .social-preview-panel.is-open{
+    width:min(420px, 90vw);
+    max-width:420px;
+    transform:translateY(0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce){
