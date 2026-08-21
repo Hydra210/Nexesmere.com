@@ -432,7 +432,7 @@ button.social-btn{
 }
 
 .social-preview-panel.is-open{
-  max-height:320px;
+  max-height:380px;
   margin-top:16px;
   padding:16px;
   opacity:1;
@@ -507,11 +507,30 @@ button.social-btn{
 
 .preview-bio{
   margin-top:12px;
+  padding:10px 12px;
+  max-height:130px;
+  overflow-y:auto;
   font-size:12px;
   line-height:1.5;
   color:var(--fg);
   opacity:.85;
   white-space:pre-line;
+  background:rgba(242,242,237,.04);
+  border:1px solid var(--line);
+  border-radius:10px;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(242,242,237,.25) transparent;
+}
+
+.preview-bio::-webkit-scrollbar{
+  width:6px;
+}
+.preview-bio::-webkit-scrollbar-track{
+  background:transparent;
+}
+.preview-bio::-webkit-scrollbar-thumb{
+  background:rgba(242,242,237,.25);
+  border-radius:3px;
 }
 
 .preview-visit-btn{
