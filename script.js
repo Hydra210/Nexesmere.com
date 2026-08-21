@@ -379,6 +379,7 @@ function ensureSecondLayer(){
   bgVideo2.muted = true;
   bgVideo2.playsInline = true;
   bgVideo2.preload = "auto";
+  bgVideo2.disablePictureInPicture = true;
   bgVideo.insertAdjacentElement("afterend", bgVideo2);
 
   audioEl2 = document.createElement("audio");

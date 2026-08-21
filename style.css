@@ -412,20 +412,30 @@ button.social-btn{
   transform:translateY(-1px);
 }
 
-.social-preview-panel{
+.socials-wrap{
+  position:relative;
   width:100%;
+}
+
+.social-preview-panel{
+  position:absolute;
+  top:calc(100% + 10px);
+  left:0;
+  right:0;
+  z-index:20;
   max-height:0;
-  margin-top:0;
   padding:0 16px;
   opacity:0;
   overflow:hidden;
-  background:rgba(242,242,237,.03);
+  background:rgba(8,8,7,.94);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
   border:1px solid transparent;
   border-radius:16px;
   text-align:left;
+  pointer-events:none;
   transition:
     max-height var(--transition-slow) ease,
-    margin-top var(--transition-slow) ease,
     padding var(--transition-slow) ease,
     border-color var(--transition-slow) ease,
     opacity var(--transition-fast) ease .12s;
@@ -433,10 +443,10 @@ button.social-btn{
 
 .social-preview-panel.is-open{
   max-height:380px;
-  margin-top:16px;
   padding:16px;
   opacity:1;
   border-color:var(--line);
+  pointer-events:auto;
 }
 
 .preview-header{
